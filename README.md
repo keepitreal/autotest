@@ -81,7 +81,7 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 {
   "mcpServers": {
     "autotest": {
-      "command": "node",
+      "command": "/Users/yourname/.nvm/versions/node/v22.16.0/bin/node",
       "args": ["/path/to/autotest/dist/index.js"],
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
@@ -92,6 +92,13 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
     }
   }
 }
+```
+
+**Note**: If you're using nvm (Node Version Manager), use the full path to your node executable instead of just `"node"`. You can find your node path with:
+
+```bash
+which node
+# Example output: /Users/yourname/.nvm/versions/node/v22.16.0/bin/node
 ```
 
 ## 🎯 Available Tools

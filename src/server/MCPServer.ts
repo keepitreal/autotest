@@ -37,6 +37,7 @@ export class MCPServer {
           tools: mcpConfig.capabilities.tools ? {} : undefined,
           resources: mcpConfig.capabilities.resources ? {} : undefined,
           prompts: mcpConfig.capabilities.prompts ? {} : undefined,
+          logging: {}, // Enable logging notifications support
         },
       }
     );
@@ -54,14 +55,22 @@ export class MCPServer {
     // Connect our logger to MCP notifications
     logger.setMCPLogCallback((level, message, data) => {
       if (config.getLoggingConfig().enableMCPLogging && this.isRunning) {
-        this.server.notification({
-          method: "notifications/message",
-          params: {
-            level,
-            logger: "rn-ios-simulator-mcp",
-            data: data ? `${message} | Data: ${JSON.stringify(data)}` : message,
-          },
-        });
+        try {
+          this.server.notification({
+            method: "notifications/log",
+            params: {
+              level,
+              logger: "rn-ios-simulator-mcp",
+              data: data
+                ? `${message} | Data: ${JSON.stringify(data)}`
+                : message,
+            },
+          });
+        } catch (error) {
+          // Fallback to console logging if MCP logging fails
+          console.error(`MCP logging failed: ${error}`);
+          console.log(`[${level}] ${message}`, data);
+        }
       }
     });
   }
@@ -209,15 +218,14 @@ export class MCPServer {
 
       const transport = new StdioServerTransport();
 
-      this.isRunning = true;
-      this.mcpLogger.info("MCP server started successfully");
-
-      // Send initial log to verify MCP logging works
-      this.mcpLogger.info("React Native iOS Simulator MCP Server is ready");
-
-      // Connect to transport - this should keep the process alive
+      // Connect to transport first, before enabling MCP logging
       await this.server.connect(transport);
 
+      // Only enable MCP logging after connection is established
+      this.isRunning = true;
+
+      this.mcpLogger.info("MCP server started successfully");
+      this.mcpLogger.info("React Native iOS Simulator MCP Server is ready");
       this.mcpLogger.info("MCP server connected and ready for requests");
     } catch (error) {
       this.mcpLogger.error("Failed to start MCP server", error);
