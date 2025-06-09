@@ -57,22 +57,30 @@ npm install -g @react-native-community/cli
 ### 2. Clone and Setup Project
 
 ```bash
-git clone https://github.cbhq.net/darion-welch/autotest
-cd autotest
+git clone <repository-url>
+cd rn-ios-simulator-mcp
 npm install
 npm run build
 ```
 
 ### 3. Configure with Cursor
 
-Add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
+First, get the full path to your project:
+
+```bash
+cd autotest
+pwd
+# Copy the output path (e.g., /Users/yourname/autotest)
+```
+
+Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "rn-ios-simulator": {
       "command": "node",
-      "args": ["/path/to/rn-ios-simulator-mcp/dist/index.js"],
+      "args": ["/path/to/autodev/dist/index.js"],
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
         "RN_DEFAULT_IOS_VERSION": "17.0",
