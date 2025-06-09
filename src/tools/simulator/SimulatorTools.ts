@@ -9,6 +9,82 @@ export function createSimulatorTools(
 ): RegisteredTool[] {
   return [
     {
+      name: "mcp_server_healthcheck",
+      description: "Check if the MCP server is running and responsive",
+      category: "simulator",
+      inputSchema: {
+        type: "object",
+        properties: {},
+      },
+      handler: async (_args: any) => {
+        simulatorLogger.info("Performing MCP server healthcheck");
+
+        try {
+          const startTime = Date.now();
+
+          // Basic server health checks
+          const serverInfo = {
+            status: "healthy",
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            platform: process.platform,
+            arch: process.arch,
+            memoryUsage: process.memoryUsage(),
+            responseTime: Date.now() - startTime,
+          };
+
+          // Check if we can access simulator manager
+          let simulatorStatus = "unknown";
+          try {
+            const bootedSims = await simulatorManager.listBootedSimulators();
+            simulatorStatus = `${bootedSims.length} simulators booted`;
+          } catch (error) {
+            simulatorStatus = `Error: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`;
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `✅ MCP Server Health Check - PASSED\n\n` +
+                  `🚀 Server Status: ${serverInfo.status}\n` +
+                  `📅 Timestamp: ${serverInfo.timestamp}\n` +
+                  `⏱️ Uptime: ${Math.floor(serverInfo.uptime)} seconds\n` +
+                  `⚡ Response Time: ${serverInfo.responseTime}ms\n` +
+                  `📱 Simulators: ${simulatorStatus}\n` +
+                  `💻 Platform: ${serverInfo.platform} (${serverInfo.arch})\n` +
+                  `🟢 Node.js: ${serverInfo.nodeVersion}\n` +
+                  `🧠 Memory: ${Math.round(
+                    serverInfo.memoryUsage.heapUsed / 1024 / 1024
+                  )}MB used\n\n` +
+                  `The MCP server is running and responsive. You can now use other tools!`,
+              },
+            ],
+          };
+        } catch (error) {
+          simulatorLogger.error("MCP server healthcheck failed", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `❌ MCP Server Health Check - FAILED\n\n` +
+                  `Error: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                  }\n\n` +
+                  `The server is running but encountered an issue during healthcheck.`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+    {
       name: "create_rn_simulator_session",
       description: "Create a new React Native simulator session",
       category: "simulator",

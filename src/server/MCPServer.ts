@@ -208,13 +208,17 @@ export class MCPServer {
       );
 
       const transport = new StdioServerTransport();
-      await this.server.connect(transport);
 
       this.isRunning = true;
       this.mcpLogger.info("MCP server started successfully");
 
       // Send initial log to verify MCP logging works
       this.mcpLogger.info("React Native iOS Simulator MCP Server is ready");
+
+      // Connect to transport - this should keep the process alive
+      await this.server.connect(transport);
+
+      this.mcpLogger.info("MCP server connected and ready for requests");
     } catch (error) {
       this.mcpLogger.error("Failed to start MCP server", error);
       throw error;

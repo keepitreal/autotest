@@ -299,22 +299,15 @@ export class SimulatorManager {
 
   private async ensureIDBConnection(udid: string): Promise<void> {
     try {
-      // Check if IDB is already connected by trying to list targets
-      const targets = await idb.listTargets();
-      const connectedTarget = targets.find(
-        (target) =>
-          target.udid === udid &&
-          target.type === "simulator" &&
-          !target.name.includes("No Companion Connected")
+      // Always try to connect since IDB connection status can be unreliable
+      // and connecting to an already-connected simulator is safe
+      this.simulatorLogger.debug(
+        `Ensuring IDB connection to simulator: ${udid}`
       );
-
-      if (!connectedTarget) {
-        this.simulatorLogger.debug(`Connecting IDB to simulator: ${udid}`);
-        await idb.connectToTarget(udid);
-        this.simulatorLogger.debug(
-          `Successfully connected IDB to simulator: ${udid}`
-        );
-      }
+      await idb.connectToTarget(udid);
+      this.simulatorLogger.debug(
+        `IDB connection ensured for simulator: ${udid}`
+      );
     } catch (error) {
       this.simulatorLogger.warning(
         `Could not ensure IDB connection for ${udid}`,

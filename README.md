@@ -98,6 +98,7 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 
 ### Simulator Management
 
+- `mcp_server_healthcheck` - Check if MCP server is running and responsive
 - `create_rn_simulator_session` - Create a new React Native simulator session
 - `terminate_simulator_session` - Terminate an active session
 - `boot_simulator` - Boot an iOS simulator by UDID
@@ -137,6 +138,8 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 Once configured with Cursor, you can use natural language commands:
 
 ```
+"Check if the MCP server is running properly"
+
 "Create a new React Native simulator session with iPhone 15 Pro for the project at ./MyReactNativeApp"
 
 "Build and run the React Native app on the current simulator"
@@ -242,6 +245,33 @@ rn-ios-simulator-mcp/
 3. **Add React Native Services**: Metro bundler and DevTools integration
 4. **Testing & Validation**: End-to-end testing with real React Native apps
 5. **Documentation**: Complete API documentation and examples
+
+## 🔧 Troubleshooting
+
+### MCP Server Connection Issues
+
+If you're getting connection errors or tools aren't working:
+
+1. **Use the healthcheck tool first**:
+   ```
+   "Check if the MCP server is running properly"
+   ```
+2. **Verify your Cursor configuration** (`~/.cursor/mcp.json`):
+   - Correct path to `dist/index.js`
+   - No syntax errors in JSON
+3. **Common solutions**:
+   - Restart Cursor after configuration changes
+   - Rebuild the project: `npm run build`
+   - Check if any simulators are running
+   - Make sure `idb` is installed: `idb --help`
+
+### Error: "Not connected"
+
+This usually means IDB can't connect to simulators. The server now handles this automatically, but if you still see this:
+
+- Try using `mcp_server_healthcheck` first
+- Make sure at least one iOS simulator is running
+- The server will auto-connect to simulators when you use tools
 
 ## 🤝 Contributing
 
