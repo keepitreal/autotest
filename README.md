@@ -48,11 +48,13 @@ A Model Context Protocol (MCP) server that enables Cursor to interact with React
 ```bash
 # Install Facebook IDB (required for iOS simulator communication)
 brew install idb-companion
-pip3 install fb-idb
+pipx install fb-idb
 
 # Install React Native CLI globally (if not already installed)
 npm install -g @react-native-community/cli
 ```
+
+**Note**: The MCP server automatically handles IDB connections to simulators. You don't need to manually run `idb connect` commands!
 
 ### 2. Clone and Setup Project
 

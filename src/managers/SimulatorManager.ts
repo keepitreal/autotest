@@ -156,7 +156,23 @@ export class SimulatorManager {
 
   async listBootedSimulators(): Promise<SimulatorInfo[]> {
     const allSimulators = await this.listAvailableSimulators();
-    return allSimulators.filter((sim) => sim.state === "Booted");
+    const bootedSimulators = allSimulators.filter(
+      (sim) => sim.state === "Booted"
+    );
+
+    // Auto-connect to any booted simulators that aren't connected to IDB yet
+    for (const simulator of bootedSimulators) {
+      try {
+        await this.ensureIDBConnection(simulator.udid);
+      } catch (error) {
+        this.simulatorLogger.warning(
+          `Failed to connect to simulator ${simulator.udid}`,
+          error
+        );
+      }
+    }
+
+    return bootedSimulators;
   }
 
   async bootSimulatorByUDID(udid: string): Promise<void> {
@@ -230,7 +246,15 @@ export class SimulatorManager {
 
   async getCurrentSimulator(): Promise<SimulatorInfo | null> {
     const bootedSimulators = await this.listBootedSimulators();
-    return bootedSimulators.length > 0 ? bootedSimulators[0]! : null;
+    const currentSimulator =
+      bootedSimulators.length > 0 ? bootedSimulators[0]! : null;
+
+    // Ensure IDB connection for the current simulator
+    if (currentSimulator) {
+      await this.ensureIDBConnection(currentSimulator.udid);
+    }
+
+    return currentSimulator;
   }
 
   async getSimulatorInfo(udid: string): Promise<SimulatorInfo | null> {
@@ -270,6 +294,33 @@ export class SimulatorManager {
         error
       );
       throw error;
+    }
+  }
+
+  private async ensureIDBConnection(udid: string): Promise<void> {
+    try {
+      // Check if IDB is already connected by trying to list targets
+      const targets = await idb.listTargets();
+      const connectedTarget = targets.find(
+        (target) =>
+          target.udid === udid &&
+          target.type === "simulator" &&
+          !target.name.includes("No Companion Connected")
+      );
+
+      if (!connectedTarget) {
+        this.simulatorLogger.debug(`Connecting IDB to simulator: ${udid}`);
+        await idb.connectToTarget(udid);
+        this.simulatorLogger.debug(
+          `Successfully connected IDB to simulator: ${udid}`
+        );
+      }
+    } catch (error) {
+      this.simulatorLogger.warning(
+        `Could not ensure IDB connection for ${udid}`,
+        error
+      );
+      // Don't throw - this is a best-effort connection
     }
   }
 
