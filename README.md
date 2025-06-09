@@ -57,8 +57,8 @@ npm install -g @react-native-community/cli
 ### 2. Clone and Setup Project
 
 ```bash
-git clone <repository-url>
-cd rn-ios-simulator-mcp
+git clone https://github.cbhq.net/darion-welch/autotest
+cd autotest
 npm install
 npm run build
 ```
