@@ -78,9 +78,9 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
-    "rn-ios-simulator": {
+    "autotest": {
       "command": "node",
-      "args": ["/path/to/autodev/dist/index.js"],
+      "args": ["/path/to/autotest/dist/index.js"],
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
         "RN_DEFAULT_IOS_VERSION": "17.0",
