@@ -24,30 +24,29 @@ async function main() {
     const { MCPServer } = await import("./server/MCPServer");
     const server = new MCPServer();
 
-    // Set up cleanup handlers before starting
-    process.on("SIGINT", async () => {
-      logger.info("Received SIGINT, shutting down gracefully...");
-      if (server.isServerRunning()) {
-        await server.stop();
-      }
-      process.exit(0);
-    });
-
-    process.on("SIGTERM", async () => {
-      logger.info("Received SIGTERM, shutting down gracefully...");
-      if (server.isServerRunning()) {
-        await server.stop();
-      }
-      process.exit(0);
-    });
-
     await server.start();
 
     // Keep the process alive - the MCP server should handle stdio communication
     logger.info("MCP server is running and handling requests...");
 
-    // Keep process alive indefinitely
-    await new Promise(() => {}); // This will never resolve, keeping the process alive
+    // Keep the process alive to handle MCP requests with proper cleanup
+    await new Promise<void>((resolve) => {
+      process.on("SIGINT", async () => {
+        logger.info("Received SIGINT, shutting down gracefully...");
+        if (server.isServerRunning()) {
+          await server.stop();
+        }
+        resolve();
+      });
+
+      process.on("SIGTERM", async () => {
+        logger.info("Received SIGTERM, shutting down gracefully...");
+        if (server.isServerRunning()) {
+          await server.stop();
+        }
+        resolve();
+      });
+    });
   } catch (error) {
     logger.error("Failed to start MCP server", error);
     process.exit(1);

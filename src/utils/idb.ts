@@ -225,10 +225,10 @@ export class IDBWrapper {
 
   async tap(udid: string, x: number, y: number): Promise<void> {
     const result = await this.executeCommand([
-      "--udid",
-      udid,
       "ui",
       "tap",
+      "--udid",
+      udid,
       x.toString(),
       y.toString(),
     ]);
@@ -248,10 +248,10 @@ export class IDBWrapper {
     y2: number
   ): Promise<void> {
     const result = await this.executeCommand([
-      "--udid",
-      udid,
       "ui",
       "swipe",
+      "--udid",
+      udid,
       x1.toString(),
       y1.toString(),
       x2.toString(),
@@ -295,10 +295,10 @@ export class IDBWrapper {
 
   async describeElements(udid: string): Promise<string> {
     const result = await this.executeCommand([
-      "--udid",
-      udid,
       "ui",
       "describe-all",
+      "--udid",
+      udid,
     ]);
 
     if (!result.success) {
@@ -312,10 +312,10 @@ export class IDBWrapper {
 
   async describePoint(udid: string, x: number, y: number): Promise<string> {
     const result = await this.executeCommand([
-      "--udid",
-      udid,
       "ui",
       "describe-point",
+      "--udid",
+      udid,
       x.toString(),
       y.toString(),
     ]);

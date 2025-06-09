@@ -13,11 +13,6 @@ export interface LogEntry {
 export class Logger {
   private context: string;
   private enabledLevels: Set<LogLevel>;
-  private mcpLogCallback?: (
-    level: LogLevel,
-    message: string,
-    data?: any
-  ) => void;
 
   constructor(context: string = "RN-iOS-MCP") {
     this.context = context;
@@ -29,26 +24,8 @@ export class Logger {
     }
   }
 
-  setMCPLogCallback(
-    callback: (level: LogLevel, message: string, data?: any) => void
-  ) {
-    this.mcpLogCallback = callback;
-  }
-
   setLogLevels(levels: LogLevel[]) {
     this.enabledLevels = new Set(levels);
-  }
-
-  private formatMessage(
-    level: LogLevel,
-    message: string,
-    context?: string
-  ): string {
-    const timestamp = new Date().toISOString();
-    const ctx = context || this.context;
-    const levelStr = level.toUpperCase().padEnd(7);
-
-    return `[${timestamp}] [${levelStr}] [${ctx}] ${message}`;
   }
 
   private getColoredLevel(level: LogLevel): string {
@@ -69,7 +46,6 @@ export class Logger {
       return;
     }
 
-    const formattedMessage = this.formatMessage(level, message, context);
     const coloredLevel = this.getColoredLevel(level);
     const timestamp = chalk.gray(new Date().toISOString());
     const ctx = chalk.cyan(`[${context || this.context}]`);
@@ -78,11 +54,6 @@ export class Logger {
     console.error(`${timestamp} ${coloredLevel} ${ctx} ${message}`);
     if (data) {
       console.error(chalk.gray("Data:"), data);
-    }
-
-    // MCP protocol logging
-    if (this.mcpLogCallback) {
-      this.mcpLogCallback(level, formattedMessage, data);
     }
   }
 
@@ -113,9 +84,10 @@ export class Logger {
   createChildLogger(context: string): Logger {
     const child = new Logger(`${this.context}:${context}`);
     child.setLogLevels(Array.from(this.enabledLevels));
-    if (this.mcpLogCallback) {
-      child.setMCPLogCallback(this.mcpLogCallback);
-    }
+    // MCP logging disabled to avoid capability issues
+    // if (this.mcpLogCallback) {
+    //   child.setMCPLogCallback(this.mcpLogCallback);
+    // }
     return child;
   }
 }

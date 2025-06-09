@@ -37,7 +37,6 @@ export class MCPServer {
           tools: mcpConfig.capabilities.tools ? {} : undefined,
           resources: mcpConfig.capabilities.resources ? {} : undefined,
           prompts: mcpConfig.capabilities.prompts ? {} : undefined,
-          logging: {}, // Enable logging notifications support
         },
       }
     );
@@ -52,27 +51,11 @@ export class MCPServer {
   }
 
   private setupLogging() {
-    // Connect our logger to MCP notifications
-    logger.setMCPLogCallback((level, message, data) => {
-      if (config.getLoggingConfig().enableMCPLogging && this.isRunning) {
-        try {
-          this.server.notification({
-            method: "notifications/log",
-            params: {
-              level,
-              logger: "rn-ios-simulator-mcp",
-              data: data
-                ? `${message} | Data: ${JSON.stringify(data)}`
-                : message,
-            },
-          });
-        } catch (error) {
-          // Fallback to console logging if MCP logging fails
-          console.error(`MCP logging failed: ${error}`);
-          console.log(`[${level}] ${message}`, data);
-        }
-      }
-    });
+    // Use console-only logging to avoid MCP logging capability issues
+    // The logger will automatically use console output without MCP notifications
+    this.mcpLogger.debug(
+      "MCP logging setup complete - using console output only"
+    );
   }
 
   private setupRequestHandlers() {
