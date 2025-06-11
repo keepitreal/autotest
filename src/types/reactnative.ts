@@ -24,46 +24,11 @@ export interface DevMenuOption {
   enabled: boolean;
 }
 
-export interface HotReloadConfig {
-  enabled: boolean;
-  fastRefresh: boolean;
-  liveReload: boolean;
-}
-
 export interface DebugConfig {
   remoteJSDebugging: boolean;
   elementInspector: boolean;
   performanceMonitor: boolean;
   networkInspector: boolean;
-}
-
-export interface ReactNativeBuildConfig {
-  scheme: string;
-  configuration: "Debug" | "Release";
-  device?: string;
-  simulator?: string;
-  verbose?: boolean;
-  resetCache?: boolean;
-}
-
-export interface BundleConfig {
-  entryFile: string;
-  platform: "ios" | "android";
-  dev: boolean;
-  bundleOutput: string;
-  assetsDest?: string;
-  sourcemapOutput?: string;
-  resetCache?: boolean;
-  minify?: boolean;
-}
-
-export interface MetroConfig {
-  port: number;
-  host: string;
-  projectRoot: string;
-  watchFolders: string[];
-  resetCache: boolean;
-  verbose: boolean;
 }
 
 export interface ReactDevToolsConfig {

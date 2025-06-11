@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";
 import { config } from "../utils/config";
 import { idb } from "../utils/idb";
+import { headlessManager } from "../utils/headless";
 import {
   SimulatorInfo,
   SimulatorSession,
@@ -194,7 +195,24 @@ export class SimulatorManager {
       const { promisify } = await import("util");
       const execAsync = promisify(exec);
 
-      await execAsync(`xcrun simctl boot ${udid}`);
+      // Check if headless mode is enabled
+      if (headlessManager.isHeadlessEnabled()) {
+        this.simulatorLogger.info(
+          `Booting simulator in headless mode: ${udid}`
+        );
+
+        // Set environment variables to prevent GUI and boot headlessly
+        const env = {
+          ...process.env,
+          SIMULATOR_HEADLESS: "1",
+          IOS_SIMULATOR_HEADLESS: "1",
+        };
+
+        await execAsync(`xcrun simctl boot ${udid}`, { env });
+      } else {
+        this.simulatorLogger.info(`Booting simulator with GUI: ${udid}`);
+        await execAsync(`xcrun simctl boot ${udid}`);
+      }
 
       // Wait for boot to complete
       await this.waitForSimulatorState(
@@ -274,6 +292,14 @@ export class SimulatorManager {
     const targetUdid = udid || (await this.getCurrentSimulator())?.udid;
     if (!targetUdid) {
       throw new Error("No simulator to focus");
+    }
+
+    // Skip focus in headless mode since there's no GUI to focus
+    if (headlessManager.isHeadlessEnabled()) {
+      this.simulatorLogger.info(
+        `Skipping simulator focus in headless mode: ${targetUdid}`
+      );
+      return;
     }
 
     this.simulatorLogger.info(`Focusing simulator: ${targetUdid}`);

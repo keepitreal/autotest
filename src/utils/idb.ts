@@ -48,7 +48,18 @@ export class IDBWrapper {
     timeout?: number
   ): Promise<IDBCommandResult> {
     const timeoutMs = timeout || this.idbConfig.timeout;
-    const fullCommand = `idb ${args.join(" ")}`;
+
+    // Properly escape arguments that contain spaces or special characters
+    const escapedArgs = args.map((arg) => {
+      // If the argument contains spaces, quotes, or other special characters, quote it
+      if (/[\s"'`$\\(){}[\]|&;<>?*~]/.test(arg)) {
+        // Escape any existing quotes and wrap in quotes
+        return `"${arg.replace(/"/g, '\\"')}"`;
+      }
+      return arg;
+    });
+
+    const fullCommand = `idb ${escapedArgs.join(" ")}`;
 
     this.idbLogger.debug(`Executing IDB command: ${fullCommand}`);
 
@@ -106,6 +117,92 @@ export class IDBWrapper {
     }
 
     return lastResult!;
+  }
+
+  async executeCommandWithSpawn(
+    args: string[],
+    timeout?: number
+  ): Promise<IDBCommandResult> {
+    const timeoutMs = timeout || this.idbConfig.timeout;
+
+    this.idbLogger.debug(
+      `Executing IDB command with spawn: idb ${args.join(" ")}`
+    );
+
+    return new Promise((resolve) => {
+      const child = spawn("idb", args, {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      // Set up timeout
+      if (timeoutMs > 0) {
+        timeoutId = setTimeout(() => {
+          child.kill();
+          resolve({
+            success: false,
+            stdout,
+            stderr: stderr + "\nCommand timed out",
+            exitCode: -1,
+          });
+        }, timeoutMs);
+      }
+
+      // Collect stdout
+      if (child.stdout) {
+        child.stdout.on("data", (data) => {
+          stdout += data.toString();
+        });
+      }
+
+      // Collect stderr
+      if (child.stderr) {
+        child.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+      }
+
+      // Handle process exit
+      child.on("exit", (code) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        const success = code === 0;
+        const result: IDBCommandResult = {
+          success,
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+          exitCode: code || 0,
+        };
+
+        if (success) {
+          this.idbLogger.debug(`IDB command succeeded with spawn`);
+        } else {
+          this.idbLogger.error(`IDB command failed with spawn`, result);
+        }
+
+        resolve(result);
+      });
+
+      // Handle spawn errors
+      child.on("error", (error) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+
+        this.idbLogger.error(`IDB spawn error`, error);
+        resolve({
+          success: false,
+          stdout,
+          stderr: stderr + "\n" + error.message,
+          exitCode: -1,
+        });
+      });
+    });
   }
 
   async spawnCommand(
@@ -180,9 +277,9 @@ export class IDBWrapper {
 
   async installApp(udid: string, appPath: string): Promise<void> {
     const result = await this.executeCommandWithRetry([
+      "install",
       "--udid",
       udid,
-      "install",
       appPath,
     ]);
 
@@ -195,9 +292,9 @@ export class IDBWrapper {
 
   async launchApp(udid: string, bundleId: string): Promise<void> {
     const result = await this.executeCommandWithRetry([
+      "launch",
       "--udid",
       udid,
-      "launch",
       bundleId,
     ]);
 
@@ -210,9 +307,9 @@ export class IDBWrapper {
 
   async terminateApp(udid: string, bundleId: string): Promise<void> {
     const result = await this.executeCommand([
+      "terminate",
       "--udid",
       udid,
-      "terminate",
       bundleId,
     ]);
 
@@ -240,14 +337,76 @@ export class IDBWrapper {
     }
   }
 
+  async inputText(udid: string, text: string): Promise<void> {
+    // Use spawn instead of exec for text input to properly handle special characters
+    const result = await this.executeCommandWithSpawn([
+      "ui",
+      "text",
+      "--udid",
+      udid,
+      text,
+    ]);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to input text "${text}" on ${udid}: ${result.stderr}`
+      );
+    }
+  }
+
+  async pressKey(
+    udid: string,
+    keyCode: string,
+    duration?: number
+  ): Promise<void> {
+    const args = ["ui", "key", "--udid", udid, keyCode];
+
+    if (duration !== undefined) {
+      args.push("--duration", duration.toString());
+    }
+
+    // Use spawn for key presses to handle special key combinations properly
+    const result = await this.executeCommandWithSpawn(args);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to press key "${keyCode}" on ${udid}: ${result.stderr}`
+      );
+    }
+  }
+
+  async pressEnter(udid: string): Promise<void> {
+    // Common key codes for Enter: "enter", "return", or key code 13
+    await this.pressKey(udid, "enter");
+  }
+
+  async pressBackspace(udid: string): Promise<void> {
+    // Common key codes for Backspace: "backspace", "delete", or key code 8
+    await this.pressKey(udid, "backspace");
+  }
+
+  async clearText(udid: string): Promise<void> {
+    // Select all and delete - common pattern for clearing text fields
+    // This might need adjustment based on actual key codes supported
+    try {
+      await this.pressKey(udid, "cmd+a"); // Select all
+      await this.pressKey(udid, "backspace"); // Delete
+    } catch (error) {
+      this.idbLogger.warning("Failed to clear text using key commands", error);
+      throw new Error(`Failed to clear text on ${udid}: ${error}`);
+    }
+  }
+
   async swipe(
     udid: string,
     x1: number,
     y1: number,
     x2: number,
-    y2: number
+    y2: number,
+    duration?: number,
+    delta?: number
   ): Promise<void> {
-    const result = await this.executeCommand([
+    const args = [
       "ui",
       "swipe",
       "--udid",
@@ -256,7 +415,17 @@ export class IDBWrapper {
       y1.toString(),
       x2.toString(),
       y2.toString(),
-    ]);
+    ];
+
+    if (duration !== undefined) {
+      args.push("--duration", duration.toString());
+    }
+
+    if (delta !== undefined) {
+      args.push("--delta", delta.toString());
+    }
+
+    const result = await this.executeCommand(args);
 
     if (!result.success) {
       throw new Error(
@@ -265,10 +434,55 @@ export class IDBWrapper {
     }
   }
 
+  async scroll(
+    udid: string,
+    x: number,
+    y: number,
+    direction: "up" | "down" | "left" | "right",
+    distance: number = 200,
+    duration: number = 0.5
+  ): Promise<void> {
+    let x1 = x,
+      y1 = y,
+      x2 = x,
+      y2 = y;
+
+    // Calculate end coordinates based on direction
+    // Note: Scroll directions are opposite to swipe directions
+    // To scroll "down" (see content below), we swipe "up"
+    // To scroll "up" (see content above), we swipe "down"
+    switch (direction) {
+      case "up":
+        // Scroll up = swipe down to reveal content above
+        y2 = y + distance;
+        break;
+      case "down":
+        // Scroll down = swipe up to reveal content below
+        y2 = y - distance;
+        break;
+      case "left":
+        // Scroll left = swipe right to reveal content to the left
+        x2 = x + distance;
+        break;
+      case "right":
+        // Scroll right = swipe left to reveal content to the right
+        x2 = x - distance;
+        break;
+    }
+
+    // Use appropriate delta for smooth scrolling (smaller delta = smoother)
+    const delta = 5;
+
+    await this.swipe(udid, x1, y1, x2, y2, duration, delta);
+  }
+
   async screenshot(udid: string, outputPath?: string): Promise<string> {
-    const args = ["--udid", udid, "screenshot"];
+    const args = ["screenshot", "--udid", udid];
     if (outputPath) {
       args.push(outputPath);
+    } else {
+      // If no output path provided, use stdout
+      args.push("-");
     }
 
     const result = await this.executeCommand(args);
@@ -285,7 +499,7 @@ export class IDBWrapper {
     outputPath: string,
     duration?: number
   ): Promise<ChildProcess> {
-    const args = ["--udid", udid, "record-video", outputPath];
+    const args = ["video", "--udid", udid, outputPath];
     if (duration) {
       args.push("--duration", duration.toString());
     }

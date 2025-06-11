@@ -29,6 +29,7 @@ export interface RNSimulatorConfig {
   iosVersion?: string;
   projectPath?: string;
   scheme?: string;
+  bundleId?: string;
 }
 
 export interface Point {
@@ -58,19 +59,16 @@ export interface BuildResult {
   error?: string;
   warnings: string[];
   duration: number;
-}
-
-export interface MetroStatus {
-  isRunning: boolean;
-  port: number;
-  projectPath?: string;
-  pid?: number;
-}
-
-export interface MetroProcess {
-  pid: number;
-  port: number;
-  projectPath: string;
+  command?: string;
+  workingDirectory?: string;
+  bundleId?: string;
+  projectInfo?: {
+    name: string;
+    path: string;
+    iosPath: string;
+    bundleId?: string;
+  };
+  instructions?: string;
 }
 
 export interface ComponentInfo {

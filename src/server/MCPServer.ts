@@ -9,6 +9,7 @@ import {
 
 import { logger } from "../utils/logger";
 import { config } from "../utils/config";
+import { headlessManager } from "../utils/headless";
 // import { MCPToolResult } from "../types/mcp"; // Will be used when implementing tool execution
 import { ToolRegistry, RegisteredTool } from "./ToolRegistry";
 import { CommandRouter } from "./CommandRouter";
@@ -193,6 +194,30 @@ export class MCPServer {
     try {
       this.mcpLogger.info("Starting MCP server...");
 
+      // Setup headless mode if enabled
+      this.mcpLogger.info("🚀 Beginning headless mode setup...");
+      const headlessResult = await headlessManager.setup();
+      if (!headlessResult.success) {
+        this.mcpLogger.error(
+          "❌ Headless setup failed",
+          headlessResult.message
+        );
+        throw new Error(`Headless setup failed: ${headlessResult.message}`);
+      }
+
+      this.mcpLogger.info(
+        "✅ Headless setup completed:",
+        headlessResult.message
+      );
+
+      // Apply headless environment variables if provided
+      if (headlessResult.environment) {
+        for (const [key, value] of Object.entries(headlessResult.environment)) {
+          process.env[key] = value;
+          this.mcpLogger.debug(`Set environment variable: ${key}=${value}`);
+        }
+      }
+
       // Initialize all tools with managers
       await this.toolRegistry.initializeTools(
         this.simulatorManager,
@@ -209,6 +234,13 @@ export class MCPServer {
 
       this.mcpLogger.info("MCP server started successfully");
       this.mcpLogger.info("React Native iOS Simulator MCP Server is ready");
+      this.mcpLogger.info(
+        `Mode: ${
+          headlessManager.isHeadlessEnabled()
+            ? `Headless (${headlessManager.getHeadlessMode()})`
+            : "GUI"
+        }`
+      );
       this.mcpLogger.info("MCP server connected and ready for requests");
     } catch (error) {
       this.mcpLogger.error("Failed to start MCP server", error);
@@ -220,6 +252,9 @@ export class MCPServer {
     try {
       this.mcpLogger.info("Stopping MCP server...");
       this.isRunning = false;
+
+      // Clean up headless mode
+      await headlessManager.cleanup();
 
       await this.server.close();
       this.mcpLogger.info("MCP server stopped");

@@ -13,9 +13,7 @@ A Model Context Protocol (MCP) server that enables Cursor to interact with React
 
 ### 📱 React Native Integration
 
-- Build and run React Native applications
-- Start/stop Metro bundler with cache management
-- Enable Fast Refresh and Hot Reload
+- Launch and manage React Native applications
 - React DevTools integration
 - Component inspection and debugging
 
@@ -86,7 +84,6 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
         "RN_DEFAULT_IOS_VERSION": "17.0",
-        "RN_METRO_PORT": "8081",
         "LOG_LEVEL": "info"
       }
     }
@@ -116,11 +113,7 @@ which node
 
 ### React Native Development
 
-- `build_and_run_rn_app` - Build and run React Native app on simulator
-- `start_metro` - Start Metro bundler for React Native
-- `stop_metro` - Stop Metro bundler
 - `reload_rn_app` - Reload React Native app
-- `enable_fast_refresh` - Enable React Native Fast Refresh
 - `open_rn_dev_menu` - Open React Native developer menu
 
 ### UI Testing & Automation
@@ -149,15 +142,11 @@ Once configured with Cursor, you can use natural language commands:
 
 "Create a new React Native simulator session with iPhone 15 Pro for the project at ./MyReactNativeApp"
 
-"Build and run the React Native app on the current simulator"
-
-"Start Metro bundler with cache reset"
-
 "Tap the element with testID 'login-button'"
 
 "Take a screenshot and save it as app-screenshot.png"
 
-"Enable Fast Refresh and open the dev menu"
+"Open the React Native dev menu"
 
 "Monitor network requests for 30 seconds"
 ```
@@ -174,84 +163,73 @@ RN_SIMULATOR_TIMEOUT="30000"                # Boot/shutdown timeout (ms)
 RN_AUTO_BOOT="true"                         # Auto-boot on session create
 
 # React Native Configuration
-RN_METRO_PORT="8081"                        # Metro bundler port
-RN_DEFAULT_SCHEME="Debug"                   # Default build scheme
-RN_BUILD_TIMEOUT="300000"                   # Build timeout (ms)
-RN_FAST_REFRESH="true"                      # Enable Fast Refresh by default
+RN_BUNDLE_ID=""                             # Default bundle ID for app launching (e.g., com.mycompany.myapp)
 
 # IDB Configuration
 IDB_TIMEOUT="30000"                         # IDB command timeout (ms)
 IDB_RETRY_ATTEMPTS="3"                      # Number of retry attempts
 IDB_RETRY_DELAY="1000"                      # Delay between retries (ms)
 
+# Headless Mode Configuration
+HEADLESS_MODE="false"                       # Enable headless mode for CI/CD
+
+# Optional Headless Overrides (only needed to customize defaults)
+# HEADLESS_MODE_TYPE="cli-only"             # Headless mode type (cli-only|virtual-display|idb-companion)
+# HEADLESS_DISPLAY_ID=":99"                 # Virtual display ID
+# HEADLESS_RESOLUTION="1024x768"            # Virtual display resolution
+# HEADLESS_COLOR_DEPTH="24"                 # Color depth for virtual display
+# IDB_COMPANION_PORT="10880"                # IDB companion port
+# IDB_COMPANION_TLS="false"                 # Enable TLS for IDB companion
+
 # Logging Configuration
 LOG_LEVEL="info"                            # Log level (debug, info, warning, error)
 MCP_LOGGING="true"                          # Enable MCP protocol logging
 ```
 
-## 🏗️ Project Structure
+## 🤖 Headless Mode for Automated QA Testing
 
-```
-rn-ios-simulator-mcp/
-├── src/
-│   ├── index.ts                    # Main entry point
-│   ├── server/                     # MCP server implementation
-│   │   ├── MCPServer.ts           # Core MCP protocol handler
-│   │   ├── ToolRegistry.ts        # Tool registration system
-│   │   └── CommandRouter.ts       # Command routing logic
-│   ├── managers/                   # Core managers
-│   │   ├── SimulatorManager.ts    # iOS simulator management
-│   │   ├── ReactNativeAppManager.ts # RN app lifecycle
-│   │   ├── UIAutomationManager.ts # UI testing automation
-│   │   └── DevelopmentToolsManager.ts # Dev tools integration
-│   ├── services/                   # React Native services
-│   │   ├── MetroBundlerService.ts # Metro integration
-│   │   ├── ReactDevToolsService.ts # DevTools bridge
-│   │   └── PerformanceService.ts  # Performance monitoring
-│   ├── tools/                      # MCP tool implementations
-│   │   ├── simulator/             # Simulator tools
-│   │   ├── reactnative/          # React Native tools
-│   │   ├── testing/              # UI testing tools
-│   │   └── debugging/            # Debugging tools
-│   ├── types/                      # TypeScript definitions
-│   │   ├── simulator.ts          # Simulator types
-│   │   ├── reactnative.ts        # React Native types
-│   │   └── mcp.ts               # MCP protocol types
-│   └── utils/                      # Utilities
-│       ├── logger.ts             # Logging system
-│       ├── config.ts             # Configuration management
-│       └── idb.ts               # IDB wrapper
-├── package.json
-├── tsconfig.json
-└── README.md
+Enables AI-powered testing through Cursor in CI/CD environments without GUI requirements.
+
+**Quick Setup:**
+
+Add `HEADLESS_MODE: "true"` to your Cursor MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "autotest": {
+      "command": "/path/to/node",
+      "args": ["/path/to/autotest/dist/index.js"],
+      "env": {
+        "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
+        "RN_DEFAULT_IOS_VERSION": "17.0",
+        "HEADLESS_MODE": "true",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}
 ```
 
-## 🔍 Development Status
+**For Linux (if needed for virtual display):**
 
-### ✅ Completed Components
+```bash
+sudo apt-get install xvfb
+```
 
-- **Project Structure**: Complete directory structure and TypeScript configuration
-- **Type Definitions**: Comprehensive type system for all components
-- **Configuration System**: Environment-based configuration with validation
-- **Logging System**: Multi-level logging with MCP protocol integration
-- **IDB Wrapper**: Facebook IDB integration for iOS simulator communication
-- **Simulator Manager**: Core simulator lifecycle management
-- **MCP Protocol Foundation**: Base server structure and tool registry
+### Mode Types
 
-### 🚧 In Progress
+**1. CLI-Only (Default for macOS)** - Uses `xcrun simctl` without GUI, no display needed
+**2. Virtual Display (Linux)** - Add `"HEADLESS_MODE_TYPE": "virtual-display"` to MCP config - Uses Xvfb for virtual screen  
+**3. IDB Companion** - Add `"HEADLESS_MODE_TYPE": "idb-companion"` to MCP config - Enhanced control via daemon
 
-- **MCP SDK Integration**: Finalizing MCP protocol implementation
-- **Tool Implementations**: Building specific MCP tools
-- **React Native Services**: Metro bundler and DevTools integration
-- **UI Automation**: Touch and gesture automation system
+### LLM Testing Example
 
-### 📋 Next Steps
+Use natural language commands through Cursor:
 
-1. **Install Dependencies**: `npm install` to resolve import errors
-2. **Complete MCP Tools**: Implement remaining tool categories
-3. **Add React Native Services**: Metro bundler and DevTools integration
-4. **Testing & Validation**: End-to-end testing with real React Native apps
-5. **Documentation**: Complete API documentation and examples
+```
+"Create iPhone 15 Pro simulator, launch MyApp, take screenshot, tap login button, enter test@example.com, press enter, verify results"
+```
 
 ## 🔧 Troubleshooting
 

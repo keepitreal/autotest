@@ -11,117 +11,6 @@ export function createReactNativeTools(
 ): RegisteredTool[] {
   return [
     {
-      name: "build_and_run_rn_app",
-      description: "Build and run a React Native app on iOS simulator",
-      category: "react-native",
-      inputSchema: {
-        type: "object",
-        properties: {
-          projectPath: {
-            type: "string",
-            description: "Path to the React Native project directory",
-          },
-          simulatorUdid: {
-            type: "string",
-            description:
-              "UDID of the simulator (optional, will use current simulator)",
-          },
-          scheme: {
-            type: "string",
-            description: "Build scheme (Debug/Release)",
-            enum: ["Debug", "Release"],
-          },
-          resetCache: {
-            type: "boolean",
-            description: "Reset Metro cache before building",
-          },
-          verbose: {
-            type: "boolean",
-            description: "Enable verbose build output",
-          },
-        },
-        required: ["projectPath"],
-      },
-      handler: async (args: any) => {
-        rnLogger.info("Building and running React Native app", args);
-
-        try {
-          // Get simulator UDID
-          let udid = args.simulatorUdid;
-          if (!udid) {
-            const currentSim = await simulatorManager.getCurrentSimulator();
-            if (!currentSim) {
-              throw new Error(
-                "No simulator is currently running. Please boot a simulator first."
-              );
-            }
-            udid = currentSim.udid;
-          }
-
-          // Build and run the app
-          const buildResult = await reactNativeManager.buildAndRunApp(
-            args.projectPath,
-            udid,
-            {
-              scheme: args.scheme,
-              resetCache: args.resetCache,
-              verbose: args.verbose,
-            }
-          );
-
-          if (buildResult.success) {
-            const warningsText =
-              buildResult.warnings.length > 0
-                ? `\n\n⚠️ Warnings (${
-                    buildResult.warnings.length
-                  }):\n${buildResult.warnings.slice(0, 5).join("\n")}`
-                : "";
-
-            return {
-              content: [
-                {
-                  type: "text",
-                  text:
-                    `✅ React Native app built and launched successfully!\n\n` +
-                    `Project: ${args.projectPath}\n` +
-                    `Simulator: ${udid}\n` +
-                    `Build Time: ${buildResult.duration}ms\n` +
-                    `Build Path: ${buildResult.buildPath}${warningsText}\n\n` +
-                    `The app is now running on the iOS simulator.`,
-                },
-              ],
-            };
-          } else {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text:
-                    `❌ Failed to build React Native app:\n\n${buildResult.error}\n\n` +
-                    `Please check your React Native project configuration and try again.`,
-                },
-              ],
-              isError: true,
-            };
-          }
-        } catch (error) {
-          rnLogger.error("Failed to build and run React Native app", error);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `❌ Failed to build and run React Native app: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      },
-    },
-
-    {
       name: "reload_rn_app",
       description: "Reload a React Native app on the simulator",
       category: "react-native",
@@ -229,7 +118,7 @@ export function createReactNativeTools(
                   `🛠️ React Native developer menu opened!\n\n` +
                   `The dev menu should now be visible on the simulator. You can use it to:\n\n` +
                   `• Reload the app\n` +
-                  `• Enable/disable Fast Refresh\n` +
+                  `• Manage development settings\n` +
                   `• Open React DevTools\n` +
                   `• Toggle Performance Monitor\n` +
                   `• Show Inspector\n\n` +
@@ -244,53 +133,6 @@ export function createReactNativeTools(
               {
                 type: "text",
                 text: `❌ Failed to open React Native dev menu: ${
-                  error instanceof Error ? error.message : "Unknown error"
-                }`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      },
-    },
-
-    {
-      name: "enable_fast_refresh",
-      description: "Enable Fast Refresh for React Native development",
-      category: "react-native",
-      inputSchema: {
-        type: "object",
-        properties: {},
-      },
-      handler: async (_args: any) => {
-        rnLogger.info("Enabling Fast Refresh");
-
-        try {
-          await reactNativeManager.enableFastRefresh();
-
-          return {
-            content: [
-              {
-                type: "text",
-                text:
-                  `⚡ Fast Refresh is enabled!\n\n` +
-                  `Fast Refresh is enabled by default in React Native 0.61+ projects. ` +
-                  `Your code changes will automatically reload in the simulator when you save files.\n\n` +
-                  `Benefits of Fast Refresh:\n` +
-                  `• Preserves component state during reload\n` +
-                  `• Faster than traditional Hot Reload\n` +
-                  `• Better error handling\n` +
-                  `• Works with React Hooks`,
-              },
-            ],
-          };
-        } catch (error) {
-          rnLogger.error("Failed to enable Fast Refresh", error);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `❌ Failed to enable Fast Refresh: ${
                   error instanceof Error ? error.message : "Unknown error"
                 }`,
               },

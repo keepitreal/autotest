@@ -16,7 +16,22 @@ async function main() {
       simulator: serverConfig.simulator,
       reactNative: serverConfig.reactNative,
       logging: serverConfig.logging,
+      headless: serverConfig.headless,
     });
+
+    // Explicitly log headless mode status
+    logger.info(
+      `🤖 Headless mode: ${
+        serverConfig.headless.enabled ? "ENABLED" : "DISABLED"
+      }`
+    );
+    if (serverConfig.headless.enabled) {
+      logger.info(`🔧 Headless mode type: ${serverConfig.headless.mode}`);
+      logger.info(`📝 Environment HEADLESS_MODE: ${process.env.HEADLESS_MODE}`);
+      logger.info(
+        `📝 Environment HEADLESS_MODE_TYPE: ${process.env.HEADLESS_MODE_TYPE}`
+      );
+    }
 
     logger.info("MCP Server is ready and waiting for connections");
 

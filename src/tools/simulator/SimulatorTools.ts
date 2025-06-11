@@ -1,6 +1,7 @@
 import { RegisteredTool } from "../../server/ToolRegistry";
 import { SimulatorManager } from "../../managers/SimulatorManager";
 import { logger } from "../../utils/logger";
+import { headlessManager } from "../../utils/headless";
 
 const simulatorLogger = logger.createChildLogger("SimulatorTools");
 
@@ -111,6 +112,11 @@ export function createSimulatorTools(
             type: "string",
             description: "Path to React Native project (optional)",
           },
+          bundleId: {
+            type: "string",
+            description:
+              "Bundle ID of the app to launch (optional, uses configured default)",
+          },
         },
         required: ["deviceType"],
       },
@@ -122,9 +128,14 @@ export function createSimulatorTools(
             deviceType: args.deviceType,
             iosVersion: args.iosVersion,
             projectPath: args.projectPath,
+            bundleId: args.bundleId,
           });
 
           const session = simulatorManager.getSimulatorSession(sessionId);
+
+          const modeInfo = headlessManager.isHeadlessEnabled()
+            ? `🤖 Running in headless mode (${headlessManager.getHeadlessMode()}) - simulators will boot without GUI`
+            : `🖥️ Running in GUI mode - simulator windows will be visible`;
 
           return {
             content: [
@@ -137,6 +148,7 @@ export function createSimulatorTools(
                   `UDID: ${session?.udid}\n` +
                   `State: ${session?.state}\n` +
                   `Created: ${session?.createdAt}\n\n` +
+                  `${modeInfo}\n\n` +
                   `You can now use this session to boot the simulator, install apps, and run React Native projects.`,
               },
             ],
@@ -178,12 +190,17 @@ export function createSimulatorTools(
         try {
           await simulatorManager.bootSimulatorByUDID(args.udid);
 
+          const modeInfo = headlessManager.isHeadlessEnabled()
+            ? `🤖 Booted in headless mode (${headlessManager.getHeadlessMode()}) - no GUI will appear`
+            : `🖥️ Booted with GUI - Simulator app window should be visible`;
+
           return {
             content: [
               {
                 type: "text",
                 text:
                   `✅ Successfully booted simulator: ${args.udid}\n\n` +
+                  `${modeInfo}\n\n` +
                   `The simulator is now running and ready for use. You can install apps, run React Native projects, or perform UI automation.`,
               },
             ],
@@ -226,12 +243,17 @@ export function createSimulatorTools(
             )
             .join("\n");
 
+          // Add headless mode indication
+          const headlessInfo = headlessManager.isHeadlessEnabled()
+            ? `\n🤖 **Headless Mode**: ENABLED (${headlessManager.getHeadlessMode()})\n   - Simulators will boot without GUI when started\n   - All interactions will be through IDB/CLI only\n`
+            : `\n🖥️ **GUI Mode**: Simulators will open with visual interface\n`;
+
           return {
             content: [
               {
                 type: "text",
                 text:
-                  `📱 Available iOS Simulators (${simulators.length} found):\n\n${simulatorList}\n` +
+                  `📱 Available iOS Simulators (${simulators.length} found):\n${headlessInfo}\n${simulatorList}\n` +
                   `Use the UDID to boot a specific simulator or create a session.`,
               },
             ],

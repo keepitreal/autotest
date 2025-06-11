@@ -149,6 +149,205 @@ export function createUIAutomationTools(
     },
 
     {
+      name: "input_text",
+      description: "Input text into the currently focused text field",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: {
+            type: "string",
+            description: "Text to input into the focused field",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["text"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Inputting text", { textLength: args.text.length });
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Input text using IDB
+          await idb.inputText(udid, args.text);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `⌨️ Text input successful!\n\n` +
+                  `Entered: "${args.text}"\n` +
+                  `Length: ${args.text.length} characters\n\n` +
+                  `The text has been sent to the currently focused input field in the simulator.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to input text", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to input text: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "press_key",
+      description: "Press a specific key (useful for Enter, Backspace, etc.)",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          key: {
+            type: "string",
+            description:
+              "Key to press (e.g., 'enter', 'backspace', 'escape', key codes, etc.)",
+          },
+          duration: {
+            type: "number",
+            description: "How long to hold the key in seconds (optional)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["key"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Pressing key", { key: args.key });
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Press key using IDB
+          await idb.pressKey(udid, args.key, args.duration);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `⌨️ Key press successful!\n\n` +
+                  `Key: "${args.key}"\n` +
+                  `Duration: ${args.duration || "default"} seconds\n\n` +
+                  `The key press has been sent to the simulator.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to press key", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to press key: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "clear_text_field",
+      description: "Clear the currently focused text field",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Clearing text field");
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Clear text using IDB
+          await idb.clearText(udid);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `🗑️ Text field cleared successfully!\n\n` +
+                  `The currently focused text field has been cleared.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to clear text field", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to clear text field: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
       name: "swipe_gesture",
       description: "Perform a swipe gesture between two points",
       category: "ui-automation",
@@ -170,6 +369,16 @@ export function createUIAutomationTools(
           toY: {
             type: "number",
             description: "Ending Y coordinate",
+          },
+          duration: {
+            type: "number",
+            description:
+              "Swipe duration in seconds (optional, default is natural speed)",
+          },
+          delta: {
+            type: "number",
+            description:
+              "Delta in pixels between touch points (optional, smaller = smoother)",
           },
           udid: {
             type: "string",
@@ -195,8 +404,16 @@ export function createUIAutomationTools(
             udid = currentSim.udid;
           }
 
-          // Perform swipe using IDB
-          await idb.swipe(udid, args.fromX, args.fromY, args.toX, args.toY);
+          // Perform swipe using IDB with optional duration and delta
+          await idb.swipe(
+            udid,
+            args.fromX,
+            args.fromY,
+            args.toX,
+            args.toY,
+            args.duration,
+            args.delta
+          );
 
           return {
             content: [
@@ -205,7 +422,9 @@ export function createUIAutomationTools(
                 text:
                   `👆 Swipe gesture performed successfully!\n\n` +
                   `From: (${args.fromX}, ${args.fromY})\n` +
-                  `To: (${args.toX}, ${args.toY})\n\n` +
+                  `To: (${args.toX}, ${args.toY})\n` +
+                  `Duration: ${args.duration || "default"} seconds\n` +
+                  `Delta: ${args.delta || "default"} pixels\n\n` +
                   `The swipe gesture has been sent to the simulator.`,
               },
             ],
@@ -217,6 +436,104 @@ export function createUIAutomationTools(
               {
                 type: "text",
                 text: `❌ Failed to perform swipe gesture: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "scroll_gesture",
+      description:
+        "Perform a scroll gesture in a specific direction from a starting point",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          x: {
+            type: "number",
+            description:
+              "X coordinate to start scroll from (typically center of scrollable area)",
+          },
+          y: {
+            type: "number",
+            description:
+              "Y coordinate to start scroll from (typically center of scrollable area)",
+          },
+          direction: {
+            type: "string",
+            enum: ["up", "down", "left", "right"],
+            description: "Direction to scroll",
+          },
+          distance: {
+            type: "number",
+            description:
+              "Distance to scroll in pixels (optional, default is 200)",
+          },
+          duration: {
+            type: "number",
+            description:
+              "Scroll duration in seconds (optional, default is 0.5 for natural feel)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["x", "y", "direction"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Performing scroll gesture", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Perform scroll using IDB
+          await idb.scroll(
+            udid,
+            args.x,
+            args.y,
+            args.direction,
+            args.distance,
+            args.duration
+          );
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `📜 Scroll gesture performed successfully!\n\n` +
+                  `Starting point: (${args.x}, ${args.y})\n` +
+                  `Direction: ${args.direction}\n` +
+                  `Distance: ${args.distance || 200} pixels\n` +
+                  `Duration: ${args.duration || 0.5} seconds\n\n` +
+                  `The scroll gesture has been sent to the simulator with optimized parameters for smooth scrolling.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to perform scroll gesture", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to perform scroll gesture: ${
                   error instanceof Error ? error.message : "Unknown error"
                 }`,
               },

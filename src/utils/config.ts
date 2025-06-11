@@ -9,16 +9,25 @@ export interface ServerConfiguration {
     autoBootOnCreate: boolean;
   };
   reactNative: {
-    defaultMetroPort: number;
-    defaultScheme: string;
-    buildTimeout: number;
-    enableFastRefresh: boolean;
-    enableHotReload: boolean;
+    defaultBundleId: string;
   };
   idb: {
     timeout: number;
     retryAttempts: number;
     retryDelay: number;
+  };
+  headless: {
+    enabled: boolean;
+    mode: "virtual-display" | "cli-only" | "idb-companion";
+    display: {
+      id: string;
+      resolution: string;
+      colorDepth: number;
+    };
+    companion: {
+      port: number;
+      enableTLS: boolean;
+    };
   };
   logging: {
     level: "debug" | "info" | "warning" | "error";
@@ -45,16 +54,25 @@ const defaultConfig: ServerConfiguration = {
     autoBootOnCreate: process.env.RN_AUTO_BOOT !== "false",
   },
   reactNative: {
-    defaultMetroPort: parseInt(process.env.RN_METRO_PORT || "8081", 10),
-    defaultScheme: process.env.RN_DEFAULT_SCHEME || "Debug",
-    buildTimeout: parseInt(process.env.RN_BUILD_TIMEOUT || "300000", 10), // 5 minutes
-    enableFastRefresh: process.env.RN_FAST_REFRESH !== "false",
-    enableHotReload: process.env.RN_HOT_RELOAD !== "false",
+    defaultBundleId: process.env.RN_BUNDLE_ID || "",
   },
   idb: {
     timeout: parseInt(process.env.IDB_TIMEOUT || "30000", 10),
     retryAttempts: parseInt(process.env.IDB_RETRY_ATTEMPTS || "3", 10),
     retryDelay: parseInt(process.env.IDB_RETRY_DELAY || "1000", 10),
+  },
+  headless: {
+    enabled: process.env.HEADLESS_MODE === "true",
+    mode: (process.env.HEADLESS_MODE_TYPE as any) || "cli-only",
+    display: {
+      id: process.env.HEADLESS_DISPLAY_ID || ":99",
+      resolution: process.env.HEADLESS_RESOLUTION || "1024x768",
+      colorDepth: parseInt(process.env.HEADLESS_COLOR_DEPTH || "24", 10),
+    },
+    companion: {
+      port: parseInt(process.env.IDB_COMPANION_PORT || "10880", 10),
+      enableTLS: process.env.IDB_COMPANION_TLS === "true",
+    },
   },
   logging: {
     level: (process.env.LOG_LEVEL as any) || "info",
@@ -80,6 +98,7 @@ export class ConfigManager {
       simulator: { ...base.simulator, ...overrides.simulator },
       reactNative: { ...base.reactNative, ...overrides.reactNative },
       idb: { ...base.idb, ...overrides.idb },
+      headless: { ...base.headless, ...overrides.headless },
       logging: { ...base.logging, ...overrides.logging },
     };
   }
@@ -88,14 +107,6 @@ export class ConfigManager {
     // Validate simulator timeout
     if (this.config.simulator.timeout < 5000) {
       throw new Error("Simulator timeout must be at least 5 seconds");
-    }
-
-    // Validate Metro port
-    if (
-      this.config.reactNative.defaultMetroPort < 1024 ||
-      this.config.reactNative.defaultMetroPort > 65535
-    ) {
-      throw new Error("Metro port must be between 1024 and 65535");
     }
 
     // Validate IDB settings
@@ -130,6 +141,10 @@ export class ConfigManager {
 
   getIDBConfig() {
     return this.config.idb;
+  }
+
+  getHeadlessConfig() {
+    return this.config.headless;
   }
 
   getLoggingConfig() {
