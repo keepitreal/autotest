@@ -477,21 +477,34 @@ export class IDBWrapper {
   }
 
   async screenshot(udid: string, outputPath?: string): Promise<string> {
-    const args = ["screenshot", "--udid", udid];
-    if (outputPath) {
-      args.push(outputPath);
-    } else {
-      // If no output path provided, use stdout
-      args.push("-");
+    const finalOutputPath = outputPath || `screenshot-${Date.now()}.png`;
+
+    this.idbLogger.debug(
+      `Taking screenshot with xcrun simctl: ${udid} -> ${finalOutputPath}`
+    );
+
+    try {
+      const { stderr } = await execAsync(
+        `xcrun simctl io "${udid}" screenshot "${finalOutputPath}"`,
+        { timeout: 10000 }
+      );
+
+      if (stderr && !stderr.includes("screenshot")) {
+        throw new Error(`xcrun simctl screenshot failed: ${stderr}`);
+      }
+
+      this.idbLogger.debug("xcrun simctl screenshot successful");
+      return finalOutputPath;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      this.idbLogger.error(`Screenshot failed: ${errorMessage}`);
+
+      throw new Error(
+        `Failed to take screenshot on ${udid}: ${errorMessage}. ` +
+          `Make sure the simulator is booted and accessible.`
+      );
     }
-
-    const result = await this.executeCommand(args);
-
-    if (!result.success) {
-      throw new Error(`Failed to take screenshot on ${udid}: ${result.stderr}`);
-    }
-
-    return outputPath || result.stdout;
   }
 
   async recordVideo(
