@@ -1228,5 +1228,449 @@ export function createUIAutomationTools(
         }
       },
     },
+
+    {
+      name: "send_notification_and_tap",
+      description:
+        "Send a push notification and automatically tap it in the notification banner area",
+      category: "testing",
+      inputSchema: {
+        type: "object",
+        properties: {
+          bundleId: {
+            type: "string",
+            description:
+              "Bundle ID of the target app (e.g., com.example.myapp)",
+          },
+          title: {
+            type: "string",
+            description: "Notification title",
+          },
+          body: {
+            type: "string",
+            description: "Notification body text",
+          },
+          url: {
+            type: "string",
+            description:
+              "Deep link URL (e.g., 'myapp://profile/123' or 'https://myapp.com/profile/123')",
+          },
+          method: {
+            type: "string",
+            enum: ["banner", "lock_screen"],
+            description: "Method to tap notification (default: banner)",
+          },
+          tapDelay: {
+            type: "number",
+            description:
+              "Delay in seconds before tapping notification (default: 1.0)",
+          },
+          badge: {
+            type: "number",
+            description: "Badge count (optional)",
+          },
+          sound: {
+            type: "string",
+            description: "Sound name (optional)",
+          },
+          category: {
+            type: "string",
+            description: "Notification category for action buttons (optional)",
+          },
+          userData: {
+            type: "object",
+            description: "Custom user data for app routing (optional)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["bundleId", "title", "body"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Sending notification and attempting to tap", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          const method = args.method || "banner";
+          const tapDelay = args.tapDelay || 1.0;
+          let stepDescription = "";
+
+          // Build notification payload (same as regular send_notification)
+          const payload: any = {
+            aps: {
+              alert: {
+                title: args.title,
+                body: args.body,
+              },
+            },
+          };
+
+          if (args.url) payload.aps.url = args.url;
+          if (args.badge !== undefined) payload.aps.badge = args.badge;
+          if (args.sound) payload.aps.sound = args.sound;
+          if (args.category) payload.aps.category = args.category;
+          if (args.userData) Object.assign(payload, args.userData);
+
+          if (method === "banner") {
+            stepDescription = "Using banner tap method:\n";
+
+            // Step 1: Send notification
+            stepDescription += "1. Sending notification...\n";
+            await idb.sendNotification(
+              udid,
+              args.bundleId,
+              JSON.stringify(payload)
+            );
+
+            // Step 2: Wait for notification to appear
+            stepDescription += `2. Waiting ${tapDelay} seconds for notification to appear...\n`;
+            await new Promise((resolve) =>
+              setTimeout(resolve, tapDelay * 1000)
+            );
+
+            // Step 3: Tap the top area where notifications appear
+            stepDescription += "3. Tapping notification banner area...\n";
+            await idb.tap(udid, 200, 80); // Top center area where banners appear
+          } else if (method === "lock_screen") {
+            stepDescription = "Using lock screen method:\n";
+
+            // Step 1: Lock the device
+            stepDescription += "1. Locking device...\n";
+            await idb.pressHardwareButton(udid, "LOCK");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Step 2: Send notification (appears on lock screen)
+            stepDescription += "2. Sending notification...\n";
+            await idb.sendNotification(
+              udid,
+              args.bundleId,
+              JSON.stringify(payload)
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Step 3: Tap on notification (center-ish of screen where notifications appear)
+            stepDescription += "3. Tapping notification on lock screen...\n";
+            await idb.tap(udid, 200, 200); // Center area where lock screen notifications appear
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+
+          let responseText =
+            `📱 Notification sent and tapped successfully!\n\n` +
+            `Method: ${method}\n` +
+            `App: ${args.bundleId}\n` +
+            `Title: ${args.title}\n` +
+            `Body: ${args.body}\n`;
+
+          if (args.url) {
+            responseText += `Deep Link: ${args.url}\n`;
+          }
+
+          responseText += `Tap Delay: ${tapDelay} seconds\n`;
+          responseText += `\nSteps performed:\n${stepDescription}`;
+
+          if (args.url) {
+            responseText += `\nThe app should now open to: ${args.url}`;
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: responseText,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to send notification and tap", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to send notification and tap: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "simulate_matching_face_id",
+      description: "Simulate a successful Face ID authentication",
+      category: "biometric-simulation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Simulating matching Face ID");
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Simulate matching Face ID using simulator manager
+          const result = await simulatorManager.simulateMatchingFaceId(udid);
+
+          if (result.success) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    `✅ Matching Face ID simulation successful!\n\n` +
+                    `The simulator has been sent a matching Face ID authentication signal.\n` +
+                    `Any Face ID authentication prompts should now accept the "face" as valid.`,
+                },
+              ],
+            };
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          uiLogger.error("Failed to simulate matching Face ID", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to simulate matching Face ID: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "simulate_non_matching_face_id",
+      description: "Simulate a failed Face ID authentication",
+      category: "biometric-simulation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Simulating non-matching Face ID");
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Simulate non-matching Face ID using simulator manager
+          const result = await simulatorManager.simulateNonMatchingFaceId(udid);
+
+          if (result.success) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    `❌ Non-matching Face ID simulation successful!\n\n` +
+                    `The simulator has been sent a non-matching Face ID authentication signal.\n` +
+                    `Any Face ID authentication prompts should now reject the "face" as invalid.`,
+                },
+              ],
+            };
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          uiLogger.error("Failed to simulate non-matching Face ID", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to simulate non-matching Face ID: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "simulate_matching_touch_id",
+      description: "Simulate a successful Touch ID authentication",
+      category: "biometric-simulation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Simulating matching Touch ID");
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Simulate matching Touch ID using simulator manager
+          const result = await simulatorManager.simulateMatchingTouchId(udid);
+
+          if (result.success) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    `✅ Matching Touch ID simulation successful!\n\n` +
+                    `The simulator has been sent a matching Touch ID authentication signal.\n` +
+                    `Any Touch ID authentication prompts should now accept the "fingerprint" as valid.`,
+                },
+              ],
+            };
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          uiLogger.error("Failed to simulate matching Touch ID", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to simulate matching Touch ID: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "simulate_non_matching_touch_id",
+      description: "Simulate a failed Touch ID authentication",
+      category: "biometric-simulation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Simulating non-matching Touch ID");
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Simulate non-matching Touch ID using simulator manager
+          const result = await simulatorManager.simulateNonMatchingTouchId(
+            udid
+          );
+
+          if (result.success) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text:
+                    `❌ Non-matching Touch ID simulation successful!\n\n` +
+                    `The simulator has been sent a non-matching Touch ID authentication signal.\n` +
+                    `Any Touch ID authentication prompts should now reject the "fingerprint" as invalid.`,
+                },
+              ],
+            };
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          uiLogger.error("Failed to simulate non-matching Touch ID", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to simulate non-matching Touch ID: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
   ];
 }

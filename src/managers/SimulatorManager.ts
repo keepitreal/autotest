@@ -6,6 +6,12 @@ import { config } from "../utils/config";
 import { idb } from "../utils/idb";
 import { headlessManager } from "../utils/headless";
 import {
+  simulateMatchingFace,
+  simulateNonMatchingFace,
+  simulateMatchingTouchId,
+  simulateNonMatchingTouchId,
+} from "../tools/simulator/FaceId";
+import {
   SimulatorInfo,
   SimulatorSession,
   RNSimulatorConfig,
@@ -321,6 +327,51 @@ export class SimulatorManager {
       );
       throw error;
     }
+  }
+
+  // Face ID / Touch ID Simulation Methods
+  async simulateMatchingFaceId(
+    udid?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const targetUdid = udid || (await this.getCurrentSimulator())?.udid;
+    this.simulatorLogger.info(
+      `Simulating matching Face ID for simulator: ${targetUdid}`
+    );
+
+    return simulateMatchingFace();
+  }
+
+  async simulateNonMatchingFaceId(
+    udid?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const targetUdid = udid || (await this.getCurrentSimulator())?.udid;
+    this.simulatorLogger.info(
+      `Simulating non-matching Face ID for simulator: ${targetUdid}`
+    );
+
+    return simulateNonMatchingFace();
+  }
+
+  async simulateMatchingTouchId(
+    udid?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const targetUdid = udid || (await this.getCurrentSimulator())?.udid;
+    this.simulatorLogger.info(
+      `Simulating matching Touch ID for simulator: ${targetUdid}`
+    );
+
+    return simulateMatchingTouchId();
+  }
+
+  async simulateNonMatchingTouchId(
+    udid?: string
+  ): Promise<{ success: boolean; message: string }> {
+    const targetUdid = udid || (await this.getCurrentSimulator())?.udid;
+    this.simulatorLogger.info(
+      `Simulating non-matching Touch ID for simulator: ${targetUdid}`
+    );
+
+    return simulateNonMatchingTouchId();
   }
 
   private async ensureIDBConnection(udid: string): Promise<void> {

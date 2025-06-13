@@ -135,6 +135,7 @@ which node
 ### Testing Features
 
 - `send_notification` - Send push notifications to test notification handling (supports deep linking)
+- `send_notification_and_tap` - Send notification and automatically tap it (solves quick dismissal issue)
 - `set_location` - Set GPS coordinates for location-based testing
 
 ## 💻 Usage Examples
@@ -167,6 +168,8 @@ Once configured with Cursor, you can use natural language commands:
 "Send a notification with deep link to open profile screen: title 'New Message', body 'You have a new message', url 'myapp://profile/123'"
 
 "Send notification with universal link: title 'View Product', body 'Check out this item', url 'https://myapp.com/product/456'"
+
+"Send notification and automatically tap it to test deep linking: title 'Test Deep Link', body 'Testing navigation', url 'myapp://profile/123'"
 
 "Set the GPS location to latitude 37.7749 longitude -122.4194 (San Francisco)"
 
@@ -279,6 +282,39 @@ const handleNotification = (notification) => {
 ```
 
 This allows you to test the complete notification → deep link → app navigation flow during your QA process.
+
+### Notification Tapping Solutions
+
+**Problem:** iOS notification banners dismiss quickly (3-5 seconds), making them hard to tap during automated testing.
+
+**Solutions:**
+
+**1. Banner Tap Method (Default)**
+
+```
+"Send notification and tap: title 'Test', body 'Deep link test', url 'myapp://profile/123'"
+```
+
+- Sends notification → Waits for banner to appear → Taps top area where banner shows
+- Simple and reliable for most testing scenarios
+- Configurable tap delay (default: 1 second)
+
+**2. Lock Screen Method**
+
+```
+"Send notification and tap using lock screen method: title 'Test', body 'Deep link test', url 'myapp://profile/123'"
+```
+
+- Locks device → Sends notification → Taps notification on lock screen
+- Most reliable since lock screen notifications persist until tapped
+
+**3. Custom Timing**
+
+```
+"Send notification and tap with tapDelay 2.0: title 'Test', body 'Deep link test', url 'myapp://profile/123'"
+```
+
+- Adjust the delay before tapping if notifications take longer to appear
 
 ## ⚙️ Configuration
 
