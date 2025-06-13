@@ -2,6 +2,10 @@ import { RegisteredTool } from "../../server/ToolRegistry";
 import { idb } from "../../utils/idb";
 import { logger } from "../../utils/logger";
 import { SimulatorManager } from "../../managers/SimulatorManager";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 const uiLogger = logger.createChildLogger("UIAutomationTools");
 
@@ -684,7 +688,8 @@ export function createUIAutomationTools(
         properties: {
           outputPath: {
             type: "string",
-            description: "Path to save video file",
+            description:
+              "Path to save video file (optional, will generate filename)",
           },
           duration: {
             type: "number",
@@ -696,7 +701,6 @@ export function createUIAutomationTools(
               "UDID of the simulator (optional, will use current simulator)",
           },
         },
-        required: ["outputPath"],
       },
       handler: async (args: any) => {
         uiLogger.info("Starting video recording", args);
@@ -714,10 +718,31 @@ export function createUIAutomationTools(
             udid = currentSim.udid;
           }
 
+          // Generate output path if not provided
+          let outputPath = args.outputPath;
+          if (!outputPath) {
+            const timestamp = Date.now();
+            const userHome =
+              process.env.HOME || process.env.USERPROFILE || "/tmp";
+            const artifactsDir = `${userHome}/tmp/rn-simulator-testing`;
+
+            // Ensure the directory exists
+            try {
+              await execAsync(`mkdir -p "${artifactsDir}"`);
+            } catch (error) {
+              uiLogger.warning(
+                "Failed to create user temp artifacts directory",
+                error
+              );
+            }
+
+            outputPath = `${artifactsDir}/recording-${timestamp}.mp4`;
+          }
+
           // Start video recording using IDB
           const recordingProcess = await idb.recordVideo(
             udid,
-            args.outputPath,
+            outputPath,
             args.duration
           );
 
@@ -727,7 +752,7 @@ export function createUIAutomationTools(
                 type: "text",
                 text:
                   `🎥 Video recording started!\n\n` +
-                  `Recording to: ${args.outputPath}\n` +
+                  `Recording to: ${outputPath}\n` +
                   `Duration: ${
                     args.duration ? `${args.duration} seconds` : "Until stopped"
                   }\n` +

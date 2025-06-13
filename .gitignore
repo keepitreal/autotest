@@ -166,8 +166,6 @@ lerna-debug.log*
 # MCP Server specific
 mcp-server.log
 simulator-sessions.json
-*.screenshot.png
-*.recording.mp4
 
 # iOS Simulator artifacts (if any get created during testing)
 *.app/

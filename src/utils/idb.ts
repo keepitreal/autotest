@@ -477,7 +477,28 @@ export class IDBWrapper {
   }
 
   async screenshot(udid: string, outputPath?: string): Promise<string> {
-    const finalOutputPath = outputPath || `screenshot-${Date.now()}.png`;
+    let finalOutputPath: string;
+
+    if (outputPath) {
+      finalOutputPath = outputPath;
+    } else {
+      // Generate path in user's temp directory
+      const timestamp = Date.now();
+      const userHome = process.env.HOME || process.env.USERPROFILE || "/tmp";
+      const artifactsDir = `${userHome}/tmp/rn-simulator-testing`;
+
+      // Ensure the directory exists
+      try {
+        await execAsync(`mkdir -p "${artifactsDir}"`);
+      } catch (error) {
+        this.idbLogger.warning(
+          "Failed to create user temp artifacts directory",
+          error
+        );
+      }
+
+      finalOutputPath = `${artifactsDir}/screenshot-${timestamp}.png`;
+    }
 
     this.idbLogger.debug(
       `Taking screenshot with xcrun simctl: ${udid} -> ${finalOutputPath}`
@@ -489,7 +510,9 @@ export class IDBWrapper {
         { timeout: 10000 }
       );
 
-      if (stderr && !stderr.includes("screenshot")) {
+      // Only treat stderr as an error if it contains actual error messages
+      // "Detected file type 'PNG' from extension" is informational, not an error
+      if (stderr && stderr.includes("error")) {
         throw new Error(`xcrun simctl screenshot failed: ${stderr}`);
       }
 
