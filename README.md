@@ -57,10 +57,9 @@ npm install -g @react-native-community/cli
 ### 2. Clone and Setup Project
 
 ```bash
-git clone <repository-url>
-cd rn-ios-simulator-mcp
+git clone https://github.com/keepitreal/autotest
+cd autotest
 npm install
-npm run build
 ```
 
 ### 3. Configure with Cursor
@@ -79,7 +78,7 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
 {
   "mcpServers": {
     "autotest": {
-      "command": "/Users/yourname/.nvm/versions/node/v22.16.0/bin/node",
+      "command": "/path/to/where/you/keep/node",
       "args": ["/path/to/autotest/dist/index.js"],
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
@@ -104,7 +103,6 @@ which node
 
 - `mcp_server_healthcheck` - Check if MCP server is running and responsive
 - `create_rn_simulator_session` - Create a new React Native simulator session
-- `terminate_simulator_session` - Terminate an active session
 - `boot_simulator` - Boot an iOS simulator by UDID
 - `shutdown_simulator` - Shutdown a running simulator
 - `list_available_simulators` - List all available simulators
@@ -113,25 +111,31 @@ which node
 
 ### React Native Development
 
+- `install_rn_app` - Install a React Native app on the simulator
+- `launch_rn_app` - Launch a React Native app on the simulator
 - `reload_rn_app` - Reload React Native app
 - `open_rn_dev_menu` - Open React Native developer menu
 
 ### UI Testing & Automation
 
-- `tap_coordinates` - Tap at specific screen coordinates
-- `tap_element_by_testid` - Tap React Native element by testID
-- `swipe_gesture` - Perform swipe gestures
 - `take_screenshot` - Capture simulator screenshot
-- `record_video` - Record simulator screen activity
-- `inspect_element` - Inspect UI element at coordinates
-- `get_accessibility_elements` - List all accessibility elements
+- `tap_coordinates` - Tap at specific screen coordinates (supports duration for long press)
+- `long_press_coordinates` - Long press at specific screen coordinates
+- `press_hardware_button` - Press hardware buttons (Home, Lock, Side Button, Siri, Apple Pay)
+- `input_text` - Input text into the currently focused text field
+- `press_key` - Press a specific key (useful for Enter, Backspace, etc.)
+- `press_key_sequence` - Press a sequence of keys in order
+- `clear_text_field` - Clear the currently focused text field
+- `swipe_gesture` - Perform swipe gestures between two points
+- `scroll_gesture` - Perform scroll gestures in a specific direction
+- `inspect_element` - Inspect UI element at specific coordinates
+- `get_accessibility_elements` - Get all accessibility elements on the current screen
+- `record_video` - Start recording video of the simulator screen
 
-### Debugging & Performance
+### Testing Features
 
-- `enable_remote_debugging` - Enable remote JavaScript debugging
-- `capture_performance_metrics` - Monitor app performance
-- `log_network_requests` - Monitor network activity
-- `get_component_tree` - Get React Native component hierarchy
+- `send_notification` - Send push notifications to test notification handling (supports deep linking)
+- `set_location` - Set GPS coordinates for location-based testing
 
 ## 💻 Usage Examples
 
@@ -142,14 +146,139 @@ Once configured with Cursor, you can use natural language commands:
 
 "Create a new React Native simulator session with iPhone 15 Pro for the project at ./MyReactNativeApp"
 
-"Tap the element with testID 'login-button'"
-
 "Take a screenshot and save it as app-screenshot.png"
+
+"Tap at coordinates (200, 400)"
+
+"Long press at coordinates (150, 300) for 3 seconds"
+
+"Press the home button"
+
+"Input the text 'hello@example.com' into the focused text field"
+
+"Press the enter key"
+
+"Press a key sequence: cmd+a then backspace to select all and delete"
+
+"Swipe from (100, 300) to (100, 100) to scroll up"
+
+"Send a push notification with title 'Test' and body 'Hello World' to com.example.myapp"
+
+"Send a notification with deep link to open profile screen: title 'New Message', body 'You have a new message', url 'myapp://profile/123'"
+
+"Send notification with universal link: title 'View Product', body 'Check out this item', url 'https://myapp.com/product/456'"
+
+"Set the GPS location to latitude 37.7749 longitude -122.4194 (San Francisco)"
 
 "Open the React Native dev menu"
 
-"Monitor network requests for 30 seconds"
+"Record a video of the simulator screen"
 ```
+
+## 🔗 Deep Linking with Push Notifications
+
+The `send_notification` tool supports deep linking to test how your app handles incoming notifications that should navigate to specific screens or content.
+
+### Types of Deep Links Supported
+
+**1. Custom URL Schemes**
+
+```javascript
+// Opens app to a specific screen using custom scheme
+url: "myapp://profile/user123";
+url: "myapp://product/456?category=electronics";
+url: "myapp://chat/conversation789";
+```
+
+**2. Universal Links**
+
+```javascript
+// Uses HTTPS URLs that your app is registered to handle
+url: "https://myapp.com/profile/user123";
+url: "https://myapp.com/product/456";
+url: "https://myapp.com/share/content789";
+```
+
+**3. Custom Data for App Routing**
+
+```javascript
+// Use userData for complex routing logic
+userData: {
+  screen: "profile",
+  userId: "123",
+  tab: "settings",
+  action: "edit"
+}
+```
+
+### Testing Examples
+
+**Basic Notification:**
+
+```
+"Send notification to com.myapp.example with title 'Welcome' and body 'Welcome to our app!'"
+```
+
+**Profile Deep Link:**
+
+```
+"Send notification with title 'Profile Updated' body 'Your profile has been updated' url 'myapp://profile/123' to com.myapp.example"
+```
+
+**E-commerce Deep Link:**
+
+```
+"Send notification with title 'Sale Alert' body 'Your wishlist item is on sale!' url 'https://myapp.com/product/456' to com.myapp.shop"
+```
+
+**Complex Routing:**
+
+```
+"Send notification with title 'New Message' body 'You have a new message' and userData containing screen='chat', conversationId='789', autoOpen=true to com.myapp.messenger"
+```
+
+### App Integration Requirements
+
+For deep linking to work in your React Native app, ensure you have:
+
+1. **URL Scheme Registration** (iOS `Info.plist`):
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>myapp</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>myapp</string>
+    </array>
+  </dict>
+</array>
+```
+
+2. **Universal Links Setup** (Apple App Site Association file)
+
+3. **React Native Linking** in your app:
+
+```javascript
+import { Linking } from "react-native";
+
+// Listen for deep links
+Linking.addEventListener("url", handleDeepLink);
+
+// Handle notification data
+const handleNotification = (notification) => {
+  if (notification.data.screen) {
+    // Navigate based on custom data
+    navigation.navigate(notification.data.screen, {
+      userId: notification.data.userId,
+    });
+  }
+};
+```
+
+This allows you to test the complete notification → deep link → app navigation flow during your QA process.
 
 ## ⚙️ Configuration
 
@@ -228,7 +357,7 @@ sudo apt-get install xvfb
 Use natural language commands through Cursor:
 
 ```
-"Create iPhone 15 Pro simulator, launch MyApp, take screenshot, tap login button, enter test@example.com, press enter, verify results"
+"Create iPhone 15 Pro simulator, launch MyApp, take screenshot, tap coordinates (200, 400), input text 'test@example.com', press enter key, take another screenshot to verify results"
 ```
 
 ## 🔧 Troubleshooting

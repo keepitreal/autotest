@@ -98,6 +98,10 @@ export function createUIAutomationTools(
             type: "number",
             description: "Y coordinate to tap",
           },
+          duration: {
+            type: "number",
+            description: "Tap duration in seconds (optional, for long press)",
+          },
           udid: {
             type: "string",
             description:
@@ -122,16 +126,19 @@ export function createUIAutomationTools(
             udid = currentSim.udid;
           }
 
-          // Perform tap using IDB
-          await idb.tap(udid, args.x, args.y);
+          // Perform tap using IDB with optional duration
+          await idb.tap(udid, args.x, args.y, args.duration);
 
+          const tapType = args.duration
+            ? `long press (${args.duration}s)`
+            : "tap";
           return {
             content: [
               {
                 type: "text",
                 text:
-                  `👆 Tapped successfully at coordinates (${args.x}, ${args.y})\n\n` +
-                  `The tap gesture has been sent to the simulator.`,
+                  `👆 ${tapType} performed successfully at coordinates (${args.x}, ${args.y})\n\n` +
+                  `The gesture has been sent to the simulator.`,
               },
             ],
           };
@@ -768,6 +775,450 @@ export function createUIAutomationTools(
               {
                 type: "text",
                 text: `❌ Failed to start video recording: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "long_press_coordinates",
+      description: "Long press at specific screen coordinates",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          x: {
+            type: "number",
+            description: "X coordinate to long press",
+          },
+          y: {
+            type: "number",
+            description: "Y coordinate to long press",
+          },
+          duration: {
+            type: "number",
+            description: "Long press duration in seconds (default: 2.0)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["x", "y"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Long pressing coordinates", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Perform long press using IDB
+          await idb.longPress(udid, args.x, args.y, args.duration);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `👆 Long press performed successfully at coordinates (${args.x}, ${args.y})\n\n` +
+                  `Duration: ${args.duration || 2.0} seconds\n\n` +
+                  `The long press gesture has been sent to the simulator.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to long press coordinates", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to long press at coordinates: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "press_hardware_button",
+      description:
+        "Press hardware buttons (Home, Lock, Side Button, Siri, Apple Pay)",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          button: {
+            type: "string",
+            enum: ["APPLE_PAY", "HOME", "LOCK", "SIDE_BUTTON", "SIRI"],
+            description: "Hardware button to press",
+          },
+          duration: {
+            type: "number",
+            description: "Press duration in seconds (optional, for long press)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["button"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Pressing hardware button", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Press hardware button using IDB
+          await idb.pressHardwareButton(udid, args.button, args.duration);
+
+          const pressType = args.duration
+            ? `long press (${args.duration}s)`
+            : "press";
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `📱 Hardware button ${pressType} successful!\n\n` +
+                  `Button: ${args.button}\n` +
+                  `Duration: ${args.duration || "default"} seconds\n\n` +
+                  `The button press has been sent to the simulator.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to press hardware button", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to press hardware button: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "press_key_sequence",
+      description: "Press a sequence of keys in order",
+      category: "ui-automation",
+      inputSchema: {
+        type: "object",
+        properties: {
+          keys: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of key codes to press in sequence",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["keys"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Pressing key sequence", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Press key sequence using IDB
+          await idb.pressKeySequence(udid, args.keys);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `⌨️ Key sequence pressed successfully!\n\n` +
+                  `Keys: [${args.keys.join(", ")}]\n\n` +
+                  `The key sequence has been sent to the simulator.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to press key sequence", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to press key sequence: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "send_notification",
+      description: "Send a push notification to an app",
+      category: "testing",
+      inputSchema: {
+        type: "object",
+        properties: {
+          bundleId: {
+            type: "string",
+            description:
+              "Bundle ID of the target app (e.g., com.example.myapp)",
+          },
+          title: {
+            type: "string",
+            description: "Notification title",
+          },
+          body: {
+            type: "string",
+            description: "Notification body text",
+          },
+          url: {
+            type: "string",
+            description:
+              "Deep link URL (e.g., 'myapp://profile/123' or 'https://myapp.com/profile/123')",
+          },
+          badge: {
+            type: "number",
+            description: "Badge count (optional)",
+          },
+          sound: {
+            type: "string",
+            description: "Sound name (optional)",
+          },
+          category: {
+            type: "string",
+            description: "Notification category for action buttons (optional)",
+          },
+          userData: {
+            type: "object",
+            description: "Custom user data for app routing (optional)",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["bundleId", "title", "body"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Sending notification", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Build notification payload
+          const payload: any = {
+            aps: {
+              alert: {
+                title: args.title,
+                body: args.body,
+              },
+            },
+          };
+
+          // Add deep link URL if provided
+          if (args.url) {
+            payload.aps.url = args.url;
+          }
+
+          // Add badge if specified
+          if (args.badge !== undefined) {
+            payload.aps.badge = args.badge;
+          }
+
+          // Add sound if specified
+          if (args.sound) {
+            payload.aps.sound = args.sound;
+          }
+
+          // Add category for action buttons if specified
+          if (args.category) {
+            payload.aps.category = args.category;
+          }
+
+          // Add custom user data for app routing
+          if (args.userData) {
+            Object.assign(payload, args.userData);
+          }
+
+          // Send notification using IDB
+          await idb.sendNotification(
+            udid,
+            args.bundleId,
+            JSON.stringify(payload)
+          );
+
+          let responseText =
+            `📱 Notification sent successfully!\n\n` +
+            `App: ${args.bundleId}\n` +
+            `Title: ${args.title}\n` +
+            `Body: ${args.body}\n`;
+
+          if (args.url) {
+            responseText += `Deep Link: ${args.url}\n`;
+          }
+
+          responseText +=
+            `Badge: ${args.badge || "none"}\n` +
+            `Sound: ${args.sound || "default"}\n`;
+
+          if (args.category) {
+            responseText += `Category: ${args.category}\n`;
+          }
+
+          responseText += `\nThe notification has been delivered to the simulator.`;
+
+          if (args.url) {
+            responseText += ` Tapping the notification will open the deep link: ${args.url}`;
+          }
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: responseText,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to send notification", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to send notification: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    },
+
+    {
+      name: "set_location",
+      description: "Set the simulator's GPS location",
+      category: "testing",
+      inputSchema: {
+        type: "object",
+        properties: {
+          latitude: {
+            type: "number",
+            description: "Latitude coordinate",
+          },
+          longitude: {
+            type: "number",
+            description: "Longitude coordinate",
+          },
+          udid: {
+            type: "string",
+            description:
+              "UDID of the simulator (optional, will use current simulator)",
+          },
+        },
+        required: ["latitude", "longitude"],
+      },
+      handler: async (args: any) => {
+        uiLogger.info("Setting location", args);
+
+        try {
+          // Get simulator UDID
+          let udid = args.udid;
+          if (!udid) {
+            const currentSim = await simulatorManager.getCurrentSimulator();
+            if (!currentSim) {
+              throw new Error(
+                "No simulator is currently running. Please boot a simulator first."
+              );
+            }
+            udid = currentSim.udid;
+          }
+
+          // Set location using IDB
+          await idb.setLocation(udid, args.latitude, args.longitude);
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `📍 Location set successfully!\n\n` +
+                  `Latitude: ${args.latitude}\n` +
+                  `Longitude: ${args.longitude}\n\n` +
+                  `The simulator's GPS location has been updated. Location-based features in apps will now use these coordinates.`,
+              },
+            ],
+          };
+        } catch (error) {
+          uiLogger.error("Failed to set location", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: `❌ Failed to set location: ${
                   error instanceof Error ? error.message : "Unknown error"
                 }`,
               },

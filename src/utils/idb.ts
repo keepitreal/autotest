@@ -320,15 +320,19 @@ export class IDBWrapper {
     }
   }
 
-  async tap(udid: string, x: number, y: number): Promise<void> {
-    const result = await this.executeCommand([
-      "ui",
-      "tap",
-      "--udid",
-      udid,
-      x.toString(),
-      y.toString(),
-    ]);
+  async tap(
+    udid: string,
+    x: number,
+    y: number,
+    duration?: number
+  ): Promise<void> {
+    const args = ["ui", "tap", "--udid", udid, x.toString(), y.toString()];
+
+    if (duration !== undefined) {
+      args.push("--duration", duration.toString());
+    }
+
+    const result = await this.executeCommand(args);
 
     if (!result.success) {
       throw new Error(
@@ -577,6 +581,90 @@ export class IDBWrapper {
     }
 
     return result.stdout;
+  }
+
+  async longPress(
+    udid: string,
+    x: number,
+    y: number,
+    duration: number = 2.0
+  ): Promise<void> {
+    // Long press is just a tap with longer duration (default 2 seconds)
+    await this.tap(udid, x, y, duration);
+  }
+
+  async pressHardwareButton(
+    udid: string,
+    button: "APPLE_PAY" | "HOME" | "LOCK" | "SIDE_BUTTON" | "SIRI",
+    duration?: number
+  ): Promise<void> {
+    const args = ["ui", "button", "--udid", udid, button];
+
+    if (duration !== undefined) {
+      args.push("--duration", duration.toString());
+    }
+
+    const result = await this.executeCommand(args);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to press ${button} button on ${udid}: ${result.stderr}`
+      );
+    }
+  }
+
+  async pressKeySequence(udid: string, keys: string[]): Promise<void> {
+    const args = ["ui", "key-sequence", "--udid", udid, ...keys];
+
+    const result = await this.executeCommand(args);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to press key sequence [${keys.join(", ")}] on ${udid}: ${
+          result.stderr
+        }`
+      );
+    }
+  }
+
+  async sendNotification(
+    udid: string,
+    bundleId: string,
+    jsonPayload: string
+  ): Promise<void> {
+    const result = await this.executeCommand([
+      "send-notification",
+      "--udid",
+      udid,
+      bundleId,
+      jsonPayload,
+    ]);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to send notification to ${bundleId} on ${udid}: ${result.stderr}`
+      );
+    }
+  }
+
+  async setLocation(
+    udid: string,
+    latitude: number,
+    longitude: number
+  ): Promise<void> {
+    const result = await this.executeCommand([
+      "set-location",
+      "--udid",
+      udid,
+      latitude.toString(),
+      longitude.toString(),
+    ]);
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to set location to ${latitude}, ${longitude} on ${udid}: ${result.stderr}`
+      );
+    }
   }
 
   private delay(ms: number): Promise<void> {
