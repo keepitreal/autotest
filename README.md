@@ -1,6 +1,6 @@
 # Autotest
 
-A Model Context Protocol (MCP) server that enables MCP client's like Cursor to interact with React Native apps running on iOS simulators. This server provides comprehensive control over iOS simulators, React Native development tools, and UI automation capabilities.
+A Model Context Protocol (MCP) server that enables MCP clients like Cursor to interact with React Native apps running on iOS simulators. This server provides comprehensive control over iOS simulators, React Native development tools, and UI automation capabilities.
 
 ## 🚀 Features
 
