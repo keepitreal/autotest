@@ -4,7 +4,7 @@ A Model Context Protocol (MCP) server that enables MCP clients like Cursor to in
 
 ## 🚀 Features
 
-### 🎮 Simulator Management
+### 🎮 iOS Simulator Management
 
 - Create and manage simulator sessions
 - Boot, shutdown, and monitor simulator states
@@ -19,17 +19,12 @@ A Model Context Protocol (MCP) server that enables MCP clients like Cursor to in
 
 ### 🖱️ UI Automation & Testing
 
-- Tap, swipe, and gesture automation
+- Tap, swipe, type, scroll and other gestures
 - Element inspection by testID or coordinates
+- Simulate push notifications and notification deeplinking
+- Simulate FaceID matching/nonmatching
 - Screenshot and video recording capabilities
 - Accessibility element analysis
-
-### 🛠️ Development Tools
-
-- Real-time performance monitoring
-- Network request logging
-- Error boundary handling
-- Component tree visualization
 
 ## 📋 Prerequisites
 
@@ -37,7 +32,6 @@ A Model Context Protocol (MCP) server that enables MCP clients like Cursor to in
 - **Node.js**: v18.0.0 or higher
 - **Xcode**: With iOS simulators installed
 - **Facebook IDB**: For iOS device/simulator communication
-- **React Native CLI**: For building and running React Native apps
 
 ## 🔧 Installation
 
