@@ -83,6 +83,8 @@ Then add to your Cursor MCP configuration (`~/.cursor/mcp.json`):
       "env": {
         "RN_DEFAULT_DEVICE": "iPhone 15 Pro",
         "RN_DEFAULT_IOS_VERSION": "17.0",
+        "SCREENSHOT_PATH": "/Users/yourname/your-project/screenshots",
+        "VIDEO_PATH": "/Users/yourname/your-project/videos",
         "LOG_LEVEL": "info"
       }
     }
@@ -102,7 +104,7 @@ which node
 ### Simulator Management
 
 - `mcp_server_healthcheck` - Check if MCP server is running and responsive
-- `create_rn_simulator_session` - Create a new React Native simulator session
+- `create_rn_simulator_session` - Create a new React Native simulator session (auto-boots by default)
 - `boot_simulator` - Boot an iOS simulator by UDID
 - `shutdown_simulator` - Shutdown a running simulator
 - `list_available_simulators` - List all available simulators
@@ -126,17 +128,81 @@ which node
 - `press_key` - Press a specific key (useful for Enter, Backspace, etc.)
 - `press_key_sequence` - Press a sequence of keys in order
 - `clear_text_field` - Clear the currently focused text field
-- `swipe_gesture` - Perform swipe gestures between two points
-- `scroll_gesture` - Perform scroll gestures in a specific direction
+- `swipe_gesture` - Perform a swipe gesture between two points
+- `scroll_gesture` - Perform a scroll gesture in a specific direction
 - `inspect_element` - Inspect UI element at specific coordinates
-- `get_accessibility_elements` - Get all accessibility elements on the current screen
-- `record_video` - Start recording video of the simulator screen
+- `get_accessibility_elements` - Get all accessibility elements on screen (preferred for navigation)
+- `record_video` - Record video of the simulator screen
 
-### Testing Features
+### Push Notifications & Deep Links
 
-- `send_notification` - Send push notifications to test notification handling (supports deep linking)
-- `send_notification_and_tap` - Send notification and automatically tap it (solves quick dismissal issue)
-- `set_location` - Set GPS coordinates for location-based testing
+- `send_notification` - Send a push notification to an app
+- `send_notification_and_tap` - Send notification and automatically tap it
+
+### Biometric Authentication
+
+- `simulate_matching_face_id` - Simulate successful Face ID
+- `simulate_non_matching_face_id` - Simulate failed Face ID
+- `simulate_matching_touch_id` - Simulate successful Touch ID
+- `simulate_non_matching_touch_id` - Simulate failed Touch ID
+
+### Location Services
+
+- `set_location` - Set the simulator's GPS location
+
+## 🎯 MCP Prompts - Best Practice Workflows
+
+The MCP server provides intelligent prompts that guide you through best practices for simulator testing.
+
+### Available Prompts
+
+1. **`start_simulator_test`** - Best practices workflow for starting simulator testing
+
+   - Parameters: `app_name` (optional), `device_type` (optional)
+   - Guides you through checking for running simulators and setting up your test environment
+
+2. **`test_ui_flow`** - Guided workflow for testing a UI flow in your app
+
+   - Parameters: `flow_description` (required)
+   - Uses accessibility tools to navigate and validate UI flows
+
+3. **`debug_simulator_issue`** - Troubleshooting guide for common simulator issues
+
+   - Parameters: `issue_description` (required)
+   - Systematically diagnoses issues using accessibility data
+
+4. **`setup_test_environment`** - Complete setup guide for simulator testing environment
+
+   - No parameters required
+   - Comprehensive walkthrough including accessibility tool verification
+
+5. **`navigate_with_accessibility`** - Guide for navigating apps using accessibility tools
+   - Parameters: `target_screen` (required)
+   - Step-by-step approach to finding and interacting with UI elements
+
+### Why Accessibility-Based Navigation?
+
+The prompts emphasize using these tools for navigation:
+
+- **`get_accessibility_elements`** - Provides complete UI hierarchy with labels and coordinates
+- **`inspect_element`** - Gets detailed information about specific UI elements
+- **`tap_coordinates`** - Interacts with elements using exact coordinates from accessibility data
+
+This approach is more reliable than screenshot-based navigation because:
+
+- LLMs receive structured, parseable data instead of images
+- Element labels and coordinates are immediately actionable
+- Works consistently across different UI states and themes
+
+### Using Prompts in Cursor
+
+Simply ask Cursor to use one of the prompts:
+
+```
+"Use the start_simulator_test prompt to help me test MyApp"
+"I need to test the login flow - use the test_ui_flow prompt"
+"Help me debug why my simulator isn't responding - use the debug_simulator_issue prompt"
+```
 
 ## 💻 Usage Examples
 
@@ -325,10 +391,14 @@ This allows you to test the complete notification → deep link → app navigati
 RN_DEFAULT_DEVICE="iPhone 15 Pro"           # Default simulator device
 RN_DEFAULT_IOS_VERSION="17.0"               # Default iOS version
 RN_SIMULATOR_TIMEOUT="30000"                # Boot/shutdown timeout (ms)
-RN_AUTO_BOOT="true"                         # Auto-boot on session create
+RN_AUTO_BOOT="true"                         # Auto-boot on session create (deprecated - use autoBoot parameter instead)
 
 # React Native Configuration
 RN_BUNDLE_ID=""                             # Default bundle ID for app launching (e.g., com.mycompany.myapp)
+
+# Artifacts Configuration
+SCREENSHOT_PATH="/path/to/screenshots"       # Directory for screenshot files (required)
+VIDEO_PATH="/path/to/videos"                # Directory for video recording files (required)
 
 # IDB Configuration
 IDB_TIMEOUT="30000"                         # IDB command timeout (ms)

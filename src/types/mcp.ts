@@ -48,3 +48,35 @@ export interface LogLevel {
   data: any;
   logger?: string;
 }
+
+export interface MCPPromptArgument {
+  name: string;
+  description?: string;
+  required?: boolean;
+}
+
+export interface MCPPromptDefinition {
+  name: string;
+  description: string;
+  arguments?: MCPPromptArgument[];
+}
+
+export interface MCPPromptMessage {
+  role: "user" | "assistant";
+  content: {
+    type: "text" | "image" | "resource";
+    text?: string;
+    data?: string;
+    mimeType?: string;
+    resource?: {
+      uri: string;
+      mimeType: string;
+      text?: string;
+    };
+  };
+}
+
+export interface MCPPromptResult {
+  description?: string;
+  messages: MCPPromptMessage[];
+}

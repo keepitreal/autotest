@@ -486,25 +486,34 @@ export class IDBWrapper {
     if (outputPath) {
       finalOutputPath = outputPath;
     } else {
-      // Generate path in user's temp directory
-      const timestamp = Date.now();
-      const userHome = process.env.HOME || process.env.USERPROFILE || "/tmp";
-      const artifactsDir = `${userHome}/tmp/rn-simulator-testing`;
-
-      // Ensure the directory exists
-      try {
-        await execAsync(`mkdir -p "${artifactsDir}"`);
-      } catch (error) {
-        this.idbLogger.warning(
-          "Failed to create user temp artifacts directory",
-          error
+      // Use configured screenshot path
+      const artifactsConfig = config.getArtifactsConfig();
+      if (!artifactsConfig.screenshotPath) {
+        throw new Error(
+          "Screenshot path not configured. Please set SCREENSHOT_PATH in your MCP configuration."
         );
       }
 
-      finalOutputPath = `${artifactsDir}/screenshot-${timestamp}.png`;
+      // Generate unique filename with timestamp
+      const timestamp = Date.now();
+      const filename = `screenshot-${timestamp}.png`;
+      finalOutputPath = `${artifactsConfig.screenshotPath}/${filename}`;
+
+      // Ensure the directory exists
+      try {
+        await execAsync(`mkdir -p "${artifactsConfig.screenshotPath}"`);
+        this.idbLogger.debug(
+          `Ensured screenshot directory exists: ${artifactsConfig.screenshotPath}`
+        );
+      } catch (error) {
+        this.idbLogger.error("Failed to create screenshot directory", error);
+        throw new Error(
+          `Failed to create screenshot directory: ${artifactsConfig.screenshotPath}`
+        );
+      }
     }
 
-    this.idbLogger.debug(
+    this.idbLogger.info(
       `Taking screenshot with xcrun simctl: ${udid} -> ${finalOutputPath}`
     );
 
@@ -520,7 +529,9 @@ export class IDBWrapper {
         throw new Error(`xcrun simctl screenshot failed: ${stderr}`);
       }
 
-      this.idbLogger.debug("xcrun simctl screenshot successful");
+      this.idbLogger.info(
+        `Screenshot saved successfully to: ${finalOutputPath}`
+      );
       return finalOutputPath;
     } catch (error) {
       const errorMessage =
@@ -536,15 +547,48 @@ export class IDBWrapper {
 
   async recordVideo(
     udid: string,
-    outputPath: string,
+    outputPath?: string,
     duration?: number
-  ): Promise<ChildProcess> {
-    const args = ["video", "--udid", udid, outputPath];
+  ): Promise<{ process: ChildProcess; outputPath: string }> {
+    let finalOutputPath: string;
+
+    if (outputPath) {
+      finalOutputPath = outputPath;
+    } else {
+      // Use configured video path
+      const artifactsConfig = config.getArtifactsConfig();
+      if (!artifactsConfig.videoPath) {
+        throw new Error(
+          "Video path not configured. Please set VIDEO_PATH in your MCP configuration."
+        );
+      }
+
+      // Generate unique filename with timestamp
+      const timestamp = Date.now();
+      const filename = `recording-${timestamp}.mp4`;
+      finalOutputPath = `${artifactsConfig.videoPath}/${filename}`;
+
+      // Ensure the directory exists
+      try {
+        await execAsync(`mkdir -p "${artifactsConfig.videoPath}"`);
+        this.idbLogger.debug(
+          `Ensured video directory exists: ${artifactsConfig.videoPath}`
+        );
+      } catch (error) {
+        this.idbLogger.error("Failed to create video directory", error);
+        throw new Error(
+          `Failed to create video directory: ${artifactsConfig.videoPath}`
+        );
+      }
+    }
+
+    const args = ["video", "--udid", udid, finalOutputPath];
     if (duration) {
       args.push("--duration", duration.toString());
     }
 
-    return this.spawnCommand(args);
+    const process = await this.spawnCommand(args);
+    return { process, outputPath: finalOutputPath };
   }
 
   async describeElements(udid: string): Promise<string> {

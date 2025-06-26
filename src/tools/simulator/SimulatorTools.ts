@@ -35,15 +35,35 @@ export function createSimulatorTools(
             responseTime: Date.now() - startTime,
           };
 
-          // Check if we can access simulator manager
+          // Check if we can access simulator manager with timeout protection
           let simulatorStatus = "unknown";
+          let simulatorWarning = "";
           try {
             const bootedSims = await simulatorManager.listBootedSimulators();
             simulatorStatus = `${bootedSims.length} simulators booted`;
           } catch (error) {
-            simulatorStatus = `Error: ${
-              error instanceof Error ? error.message : "Unknown error"
-            }`;
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            simulatorStatus = `Error checking simulators`;
+
+            // Provide helpful troubleshooting for common issues
+            if (errorMessage.includes("timeout")) {
+              simulatorWarning =
+                "\n\n⚠️ **Simulator Check Timed Out**\n" +
+                "This usually means xcrun/simctl is having issues. Try:\n" +
+                "1. Run 'xcrun simctl list' in terminal to check if it works\n" +
+                "2. Restart Xcode if it's open\n" +
+                "3. Run 'sudo xcode-select --reset' if command line tools are broken";
+            } else if (errorMessage.includes("command line tools")) {
+              simulatorWarning =
+                "\n\n⚠️ **Xcode Command Line Tools Issue**\n" +
+                "Install Xcode command line tools with: xcode-select --install";
+            }
+
+            simulatorLogger.warning(
+              "Healthcheck simulator access failed",
+              error
+            );
           }
 
           return {
@@ -62,7 +82,8 @@ export function createSimulatorTools(
                   `🧠 Memory: ${Math.round(
                     serverInfo.memoryUsage.heapUsed / 1024 / 1024
                   )}MB used\n\n` +
-                  `The MCP server is running and responsive. You can now use other tools!`,
+                  `The MCP server is running and responsive. You can now use other tools!` +
+                  simulatorWarning,
               },
             ],
           };
@@ -117,6 +138,11 @@ export function createSimulatorTools(
             description:
               "Bundle ID of the app to launch (optional, uses configured default)",
           },
+          autoBoot: {
+            type: "boolean",
+            description:
+              "Whether to automatically boot the simulator (default: true)",
+          },
         },
         required: ["deviceType"],
       },
@@ -133,9 +159,27 @@ export function createSimulatorTools(
 
           const session = simulatorManager.getSimulatorSession(sessionId);
 
+          // Determine if we should auto-boot: explicit parameter overrides config default
+          const shouldAutoBoot =
+            args.autoBoot !== undefined ? args.autoBoot : true;
+
+          // If auto-boot is requested and simulator is not already active, boot it
+          if (shouldAutoBoot && session?.state !== "active") {
+            simulatorLogger.info(`Auto-booting simulator: ${session?.udid}`);
+            await simulatorManager.bootSimulatorByUDID(session!.udid);
+            // Update session state
+            session!.state = "active";
+          }
+
           const modeInfo = headlessManager.isHeadlessEnabled()
             ? `🤖 Running in headless mode (${headlessManager.getHeadlessMode()}) - simulators will boot without GUI`
             : `🖥️ Running in GUI mode - simulator windows will be visible`;
+
+          const bootInfo = shouldAutoBoot
+            ? session?.state === "active"
+              ? "✅ Simulator booted and ready!"
+              : "⚠️ Session created but boot may have failed"
+            : "ℹ️ Simulator session created but not booted (autoBoot=false)";
 
           return {
             content: [
@@ -148,8 +192,13 @@ export function createSimulatorTools(
                   `UDID: ${session?.udid}\n` +
                   `State: ${session?.state}\n` +
                   `Created: ${session?.createdAt}\n\n` +
+                  `${bootInfo}\n\n` +
                   `${modeInfo}\n\n` +
-                  `You can now use this session to boot the simulator, install apps, and run React Native projects.`,
+                  `${
+                    shouldAutoBoot
+                      ? "The simulator should now be open and ready for use. You can install apps, run React Native projects, or perform UI automation."
+                      : "Use 'boot_simulator' with the UDID above to start the simulator when ready."
+                  }`,
               },
             ],
           };

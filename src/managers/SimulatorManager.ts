@@ -62,12 +62,6 @@ export class SimulatorManager {
         `Created simulator session: ${sessionId} for ${targetSimulator.name}`
       );
 
-      // Auto-boot if configured
-      if (this.simulatorConfig.autoBootOnCreate) {
-        await this.bootSimulatorByUDID(targetSimulator.udid);
-        session.state = "active";
-      }
-
       return sessionId;
     } catch (error) {
       this.simulatorLogger.error("Failed to create simulator session", error);
@@ -117,7 +111,8 @@ export class SimulatorManager {
       const execAsync = promisify(exec);
 
       const { stdout } = await execAsync(
-        "xcrun simctl list devices available --json"
+        "xcrun simctl list devices available --json",
+        { timeout: 10000 } // 10 second timeout
       );
       const devices = JSON.parse(stdout);
       const simulators: SimulatorInfo[] = [];
@@ -143,21 +138,25 @@ export class SimulatorManager {
 
       this.simulatorLogger.debug(`Found ${simulators.length} simulators`);
       return simulators;
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error.message || "Unknown error";
+      const isTimeout =
+        errorMessage.includes("ETIMEDOUT") || errorMessage.includes("timeout");
+
+      if (isTimeout) {
+        this.simulatorLogger.error(
+          "xcrun simctl command timed out - this usually means Xcode/simctl is having issues",
+          error
+        );
+        throw new Error(
+          "Failed to list simulators: Command timed out. Try running 'xcrun simctl list' manually to check if it's working."
+        );
+      }
+
       this.simulatorLogger.error("Failed to list simulators", error);
-      // Return mock data for development
-      return [
-        {
-          udid: "mock-iphone-15-pro",
-          name: "iPhone 15 Pro",
-          state: "Shutdown",
-          runtime: "iOS 17.0",
-          deviceTypeIdentifier:
-            "com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro",
-          platform: "iOS",
-          version: "17.0",
-        },
-      ];
+      throw new Error(
+        `Failed to list simulators: ${errorMessage}. Make sure Xcode command line tools are installed.`
+      );
     }
   }
 
@@ -214,10 +213,10 @@ export class SimulatorManager {
           IOS_SIMULATOR_HEADLESS: "1",
         };
 
-        await execAsync(`xcrun simctl boot ${udid}`, { env });
+        await execAsync(`xcrun simctl boot ${udid}`, { env, timeout: 30000 });
       } else {
         this.simulatorLogger.info(`Booting simulator with GUI: ${udid}`);
-        await execAsync(`xcrun simctl boot ${udid}`);
+        await execAsync(`xcrun simctl boot ${udid}`, { timeout: 30000 });
       }
 
       // Wait for boot to complete
@@ -249,7 +248,7 @@ export class SimulatorManager {
       const { promisify } = await import("util");
       const execAsync = promisify(exec);
 
-      await execAsync(`xcrun simctl shutdown ${udid}`);
+      await execAsync(`xcrun simctl shutdown ${udid}`, { timeout: 30000 });
 
       // Wait for shutdown to complete
       await this.waitForSimulatorState(
@@ -317,7 +316,8 @@ export class SimulatorManager {
       const execAsync = promisify(exec);
 
       await execAsync(
-        `osascript -e 'tell application "Simulator" to activate'`
+        `osascript -e 'tell application "Simulator" to activate'`,
+        { timeout: 5000 }
       );
       this.simulatorLogger.info(`Focused simulator: ${targetUdid}`);
     } catch (error) {

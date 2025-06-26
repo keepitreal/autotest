@@ -2,10 +2,6 @@ import { RegisteredTool } from "../../server/ToolRegistry";
 import { idb } from "../../utils/idb";
 import { logger } from "../../utils/logger";
 import { SimulatorManager } from "../../managers/SimulatorManager";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
 
 const uiLogger = logger.createChildLogger("UIAutomationTools");
 
@@ -28,7 +24,7 @@ export function createUIAutomationTools(
           outputPath: {
             type: "string",
             description:
-              "Path to save screenshot (optional, will generate filename)",
+              "Path to save screenshot (optional, uses configured SCREENSHOT_PATH if not provided)",
           },
         },
       },
@@ -48,11 +44,8 @@ export function createUIAutomationTools(
             udid = currentSim.udid;
           }
 
-          // Generate filename if not provided
-          const outputPath = args.outputPath || `screenshot-${Date.now()}.png`;
-
-          // Take screenshot using IDB
-          const screenshotPath = await idb.screenshot(udid, outputPath);
+          // Take screenshot using IDB (uses configured path if outputPath not provided)
+          const screenshotPath = await idb.screenshot(udid, args.outputPath);
 
           return {
             content: [
@@ -696,7 +689,7 @@ export function createUIAutomationTools(
           outputPath: {
             type: "string",
             description:
-              "Path to save video file (optional, will generate filename)",
+              "Path to save video file (optional, uses configured VIDEO_PATH if not provided)",
           },
           duration: {
             type: "number",
@@ -725,33 +718,9 @@ export function createUIAutomationTools(
             udid = currentSim.udid;
           }
 
-          // Generate output path if not provided
-          let outputPath = args.outputPath;
-          if (!outputPath) {
-            const timestamp = Date.now();
-            const userHome =
-              process.env.HOME || process.env.USERPROFILE || "/tmp";
-            const artifactsDir = `${userHome}/tmp/rn-simulator-testing`;
-
-            // Ensure the directory exists
-            try {
-              await execAsync(`mkdir -p "${artifactsDir}"`);
-            } catch (error) {
-              uiLogger.warning(
-                "Failed to create user temp artifacts directory",
-                error
-              );
-            }
-
-            outputPath = `${artifactsDir}/recording-${timestamp}.mp4`;
-          }
-
-          // Start video recording using IDB
-          const recordingProcess = await idb.recordVideo(
-            udid,
-            outputPath,
-            args.duration
-          );
+          // Start video recording using IDB (uses configured path if outputPath not provided)
+          const { process: recordingProcess, outputPath: finalOutputPath } =
+            await idb.recordVideo(udid, args.outputPath, args.duration);
 
           return {
             content: [
@@ -759,7 +728,7 @@ export function createUIAutomationTools(
                 type: "text",
                 text:
                   `🎥 Video recording started!\n\n` +
-                  `Recording to: ${outputPath}\n` +
+                  `Recording to: ${finalOutputPath}\n` +
                   `Duration: ${
                     args.duration ? `${args.duration} seconds` : "Until stopped"
                   }\n` +

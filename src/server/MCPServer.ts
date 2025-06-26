@@ -3,6 +3,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   ErrorCode,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -12,6 +14,7 @@ import { config } from "../utils/config";
 import { headlessManager } from "../utils/headless";
 // import { MCPToolResult } from "../types/mcp"; // Will be used when implementing tool execution
 import { ToolRegistry, RegisteredTool } from "./ToolRegistry";
+import { PromptRegistry } from "./PromptRegistry";
 import { CommandRouter } from "./CommandRouter";
 import { SimulatorManager } from "../managers/SimulatorManager";
 import { ReactNativeAppManager } from "../managers/ReactNativeAppManager";
@@ -20,6 +23,7 @@ export class MCPServer {
   private server: Server;
   private mcpLogger = logger.createChildLogger("MCP-Server");
   private toolRegistry: ToolRegistry;
+  private promptRegistry: PromptRegistry;
   private commandRouter: CommandRouter;
   private simulatorManager: SimulatorManager;
   private reactNativeManager: ReactNativeAppManager;
@@ -43,6 +47,7 @@ export class MCPServer {
     );
 
     this.toolRegistry = new ToolRegistry();
+    this.promptRegistry = new PromptRegistry();
     this.commandRouter = new CommandRouter(this.toolRegistry);
     this.simulatorManager = new SimulatorManager();
     this.reactNativeManager = new ReactNativeAppManager();
@@ -128,6 +133,70 @@ export class MCPServer {
           throw new McpError(
             ErrorCode.InternalError,
             `Tool execution failed: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
+        }
+      }
+    );
+
+    // Handle prompt listing
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
+      this.mcpLogger.debug("Received list-prompts request");
+
+      try {
+        const prompts = this.promptRegistry.getAllPrompts();
+        this.mcpLogger.info(`Returning ${prompts.length} available prompts`);
+
+        return { prompts };
+      } catch (error) {
+        this.mcpLogger.error("Failed to list prompts", error);
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to list prompts: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      }
+    });
+
+    // Handle prompt retrieval
+    this.server.setRequestHandler(
+      GetPromptRequestSchema,
+      async (request: any) => {
+        const { name, arguments: args } = request.params;
+
+        this.mcpLogger.info(`Retrieving prompt: ${name}`, { args });
+
+        try {
+          const prompt = this.promptRegistry.getPrompt(name);
+          if (!prompt) {
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `Unknown prompt: ${name}`
+            );
+          }
+
+          // Execute the prompt handler to get the result
+          const result = await prompt.handler(args || {});
+
+          this.mcpLogger.info(`Prompt ${name} retrieved successfully`);
+
+          // Return the result directly - it already contains messages and optional description
+          return {
+            description: result.description,
+            messages: result.messages,
+          };
+        } catch (error) {
+          this.mcpLogger.error(`Prompt retrieval failed: ${name}`, error);
+
+          if (error instanceof McpError) {
+            throw error;
+          }
+
+          throw new McpError(
+            ErrorCode.InternalError,
+            `Prompt retrieval failed: ${
               error instanceof Error ? error.message : "Unknown error"
             }`
           );
@@ -223,6 +292,9 @@ export class MCPServer {
         this.simulatorManager,
         this.reactNativeManager
       );
+
+      // Initialize all prompts with managers
+      await this.promptRegistry.initializePrompts(this.simulatorManager);
 
       const transport = new StdioServerTransport();
 

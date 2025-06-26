@@ -1,20 +1,7 @@
 import { spawn } from "child_process";
 import { idb } from "../../utils/idb";
 
-/**
- * Device-specific Continue button coordinates as percentages of screen dimensions
- * These are approximate positions where the Continue button typically appears
- */
-const CONTINUE_BUTTON_POSITIONS: {
-  [key: string]: { xPercent: number; yPercent: number };
-} = {
-  // For most devices, Continue button is at ~76% width, ~85% height
-  default: { xPercent: 0.76, yPercent: 0.85 },
-  // Device-specific overrides if needed
-  "iPhone 15 Pro": { xPercent: 0.76, yPercent: 0.85 },
-  "iPhone 15": { xPercent: 0.76, yPercent: 0.85 },
-  iPad: { xPercent: 0.5, yPercent: 0.75 }, // iPads have different layouts
-};
+// Removed unused CONTINUE_BUTTON_POSITIONS - using calculated coordinates instead
 
 /**
  * Get screen dimensions for the current simulator
@@ -33,7 +20,7 @@ async function getScreenDimensions(
 
     // Find our device in the list to get its type
     let deviceName = "Unknown";
-    for (const [runtime, deviceList] of Object.entries(devices.devices)) {
+    for (const [_runtime, deviceList] of Object.entries(devices.devices)) {
       if (Array.isArray(deviceList)) {
         const device = deviceList.find((d: any) => d.udid === udid);
         if (device) {
@@ -99,33 +86,6 @@ async function getContinueButtonCoordinates(
     );
     // Fallback coordinates (50% of 393x852)
     return { x: 197, y: 767 };
-  }
-}
-
-/**
- * Get device name from UDID
- */
-async function getDeviceName(udid: string): Promise<string> {
-  try {
-    const { exec } = await import("child_process");
-    const { promisify } = await import("util");
-    const execAsync = promisify(exec);
-
-    const { stdout } = await execAsync(`xcrun simctl list devices -j`);
-    const devices = JSON.parse(stdout);
-
-    for (const [runtime, deviceList] of Object.entries(devices.devices)) {
-      if (Array.isArray(deviceList)) {
-        const device = deviceList.find((d: any) => d.udid === udid);
-        if (device) {
-          return device.name;
-        }
-      }
-    }
-
-    return "Unknown Device";
-  } catch (error) {
-    return "Unknown Device";
   }
 }
 

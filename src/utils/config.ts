@@ -16,6 +16,10 @@ export interface ServerConfiguration {
     retryAttempts: number;
     retryDelay: number;
   };
+  artifacts: {
+    screenshotPath: string;
+    videoPath: string;
+  };
   headless: {
     enabled: boolean;
     mode: "virtual-display" | "cli-only" | "idb-companion";
@@ -44,7 +48,7 @@ const defaultConfig: ServerConfiguration = {
     capabilities: {
       tools: true,
       resources: false,
-      prompts: false,
+      prompts: true,
     },
   },
   simulator: {
@@ -60,6 +64,10 @@ const defaultConfig: ServerConfiguration = {
     timeout: parseInt(process.env.IDB_TIMEOUT || "30000", 10),
     retryAttempts: parseInt(process.env.IDB_RETRY_ATTEMPTS || "3", 10),
     retryDelay: parseInt(process.env.IDB_RETRY_DELAY || "1000", 10),
+  },
+  artifacts: {
+    screenshotPath: process.env.SCREENSHOT_PATH || "",
+    videoPath: process.env.VIDEO_PATH || "",
   },
   headless: {
     enabled: process.env.HEADLESS_MODE === "true",
@@ -98,6 +106,7 @@ export class ConfigManager {
       simulator: { ...base.simulator, ...overrides.simulator },
       reactNative: { ...base.reactNative, ...overrides.reactNative },
       idb: { ...base.idb, ...overrides.idb },
+      artifacts: { ...base.artifacts, ...overrides.artifacts },
       headless: { ...base.headless, ...overrides.headless },
       logging: { ...base.logging, ...overrides.logging },
     };
@@ -145,6 +154,10 @@ export class ConfigManager {
 
   getHeadlessConfig() {
     return this.config.headless;
+  }
+
+  getArtifactsConfig() {
+    return this.config.artifacts;
   }
 
   getLoggingConfig() {
